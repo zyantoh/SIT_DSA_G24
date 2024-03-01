@@ -4,7 +4,7 @@ Currently, code is alright.
 
 1. Algorithms:
    Key algorithms have been applied, but ensuring you've integrated both learned and potentially new data structures beyond what's seen can enhance this to get A.
-   1a. Explore these:
+1a. Explore these:
    * Advanced Graph Algorithms: Implement algorithms like A* or Dijkstra's Algorithm with priority queues for more efficient pathfinding.
    * Data Structures: Use advanced data structures such as heaps for managing distances, or disjoint set unions for grouping airports.
    * Dynamic Programming: For multi-leg flights, consider using dynamic programming to find optimal routes considering layovers or costs.
@@ -12,7 +12,7 @@ Currently, code is alright.
 
 2. Features:
    Current implementation covers basic functionalities. Adding error handling, direct and multi-leg flight options, and efficiency optimizations can strengthen this area
-   2a. Ensure our application
+2a. Ensure our application
    * Implements all essential features flawlessly: Focus on error-free execution of core functionalities like adding, searching, and displaying flight routes.
    * User Authentication: Incorporate secure login/logout functionality for users.
    * Dynamic Data Handling: Allow users to add and modify flight data, reflecting changes in real-time.
@@ -21,8 +21,8 @@ Currently, code is alright.
    * Feedback Mechanisms: Provide clear user feedback for actions, such as successful operations or errors.
 
 3. Creativity:
-   To score highly, introduce additional innovative features beyond the basics. Suggestions could include dynamic flight pricing, environmental impact estimates, or alternative route suggestions
-   3a. Ideas:
+   To score highly, introduce additional innovative features beyond the basics.
+3a. Ideas:
    * Real-Time Flight Updates: Integrate real-time data fetching for flight statuses, delays, and cancellations.
    * Environmental Impact Calculator: Offer a feature to calculate the carbon footprint of different flight routes.
    * Flexible Date Search: Allow users to search for flights with flexible dates to find the best rates or options.
@@ -31,7 +31,7 @@ Currently, code is alright.
 
 4. UI/Visualization:
    The current script lacks a UI/Visualization component. Developing a graphical user interface or a web-based interface would be crucial to meet this criterion
-   4a. Guidelines:
+4a. Guidelines:
    * Design a professional, intuitive interface focusing on user experience. Utilize modern UI frameworks if applicable.
    * Ensure responsiveness across devices.
    * Integrate interactive elements like live-updating charts or maps for flight paths.
@@ -40,7 +40,7 @@ Currently, code is alright.
 
 5. Presentation:
    While your code's structure is a start, the presentation of your project, including documentation, code clarity, and a demo, will significantly impact this score
-   5a. For excellent presentation:
+5a. For excellent presentation:
    * Ensure all team members participate actively, demonstrating familiarity with the project.
    * Organize your content clearly, starting with an introduction, followed by a detailed explanation of features, algorithms, and creative elements.
    * Practice to maintain clarity and confidence in delivery.
