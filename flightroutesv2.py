@@ -43,6 +43,9 @@ class Graph:
         if route.source_airport_id in self.airports and route.dest_airport_id in self.airports:  # Ensure both airports exist
             self.adjacency_list[route.source_airport_id].append(route.dest_airport_id)
 
+    def get_all_routes(self, start_iata, end_iata):
+        return [(route.source_airport_id, route.dest_airport_id) for route in self.routes if route.source_airport_iata == start_iata and route.dest_airport_iata == end_iata]
+
 # Function to load airports from the dataset
 def load_airports(graph, filename):
     with open(filename, 'r', encoding='utf-8') as file:
@@ -143,10 +146,6 @@ def plot_great_circle(start_lon, start_lat, end_lon, end_lat):
         ),
     )
 
-    print("START LON    : ", start_lon)
-    print("END LON      : ", end_lon)
-    print("START LAT    : ", start_lat)
-    print("END LAT      : ", end_lat)
     fig.show()
 
 def find_route_cli():
