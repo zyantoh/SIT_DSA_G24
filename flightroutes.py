@@ -1,4 +1,5 @@
 # imports here #
+import csv
 import networkx as nx
 import matplotlib.pyplot as plt
 
@@ -32,24 +33,41 @@ class FlightMap:
         nx.draw_networkx_edge_labels(self.graph, pos, edge_labels=edge_labels)
         plt.show()
 
-# main program starts here (user interface needed) #
+# Function to load data from .dat.text files
+def load_data(filename):
+    data = []
+    with open(filename, 'r') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            data.append(row)
+    return data
+
+# Load data files
+countries_data = load_data('countries.dat.txt')
+planes_data = load_data('planes.dat.txt')
+routes_data = load_data('routes.dat.txt')
+airport_data = load_data('airports.dat.txt')
+
+# Create a map of airport codes to names from countries_data
+airport_codes = {code: name for name, code, _ in countries_data}
+
+# Now let's add the routes to the flight map
 flight_map = FlightMap()
 
-    # Example data
-flight_map.add_flight('A', 'B', 100)
-flight_map.add_flight('B', 'C', 200)
-flight_map.add_flight('A', 'C', 300)
-flight_map.add_flight('C', 'D', 400)
-flight_map.add_flight('D', 'E', 500)
+for route in routes_data:
+    # Here, directly use airport codes as origin and destination
+    _, _, origin_code, destination_code, _, _, _, _, equipment = route
+    # Using a placeholder for distance, replace with actual logic if available
+    distance = 100  
+    flight_map.add_flight(origin_code, destination_code, distance)
 
-origin = 'A'
-destination = 'D'
+# Use actual airport codes for origin and destination from airport_data
+# Example: Set these based on your needs and data
+origin = 'AAL'  # Replace with an actual airport code from airport_data
+destination = 'AAR'  # Replace with another actual airport code from airport_data
 
-# Find and display shortest path
 shortest_path, distance = flight_map.find_shortest_path(origin, destination)
 flight_map.display_route(shortest_path, distance)
 
-# Visualize flight map
+# Visualize the flight map
 flight_map.visualize_flight_map()
-
-# take note of the dataset text files as well #
