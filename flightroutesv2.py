@@ -5,8 +5,8 @@ import numpy as np
 
 # Define the Airport and Route classes
 class Airport:
-    def __init__(self, airport_id, name, city, country, iata, icao, latitude, longitude, altitude, timezone, type, source):
-        self.airport_id = airport_id
+    def __init__(self, airportid, name, city, country, iata, icao, latitude, longitude, altitude, timezone, dst, tz_database_timezone, type, source):
+        self.airportid = airportid
         self.name = name
         self.city = city
         self.country = country
@@ -16,15 +16,20 @@ class Airport:
         self.longitude = float(longitude)
         self.altitude = int(altitude)
         self.timezone = timezone
+        self.dst = dst  # Include the missing 'dst' parameter
+        self.tz_database_timezone = tz_database_timezone
         self.type = type
         self.source = source
 
 class Route:
-    def __init__(self, airline, airline_id, source_airport_id, dest_airport_id, stops, equipment):
+    def __init__(self, airline, airlineID, sourceAirport, sourceAirportID, destinationAirport, destinationAirportID, codeshare, stops, equipment):
         self.airline = airline
-        self.airline_id = airline_id
-        self.source_airport_id = source_airport_id
-        self.dest_airport_id = dest_airport_id
+        self.airlineID = airlineID
+        self.sourceAirport = sourceAirport
+        self.sourceAirportID = sourceAirportID
+        self.destinationAirport = destinationAirport
+        self.destinationAirportID = destinationAirportID
+        self.codeshare = codeshare
         self.stops = int(stops)
         self.equipment = equipment
 
@@ -35,45 +40,26 @@ class Graph:
         self.adjacency_list = {}  # Key: Airport ID, Value: List of destination Airport IDs
     
     def add_airport(self, airport):
-        self.airports[airport.airport_id] = airport
-        if airport.airport_id not in self.adjacency_list:
-            self.adjacency_list[airport.airport_id] = []
+        self.airports[airport.airportid] = airport
+        if airport.airportid not in self.adjacency_list:
+            self.adjacency_list[airport.airportid] = []
     
     def add_route(self, route):
-        if route.source_airport_id in self.airports and route.dest_airport_id in self.airports:
-            self.adjacency_list[route.source_airport_id].append(route.dest_airport_id)
+        if route.sourceAirportID in self.airports and route.destinationAirportID in self.airports:
+            self.adjacency_list[route.sourceAirportID].append(route.destinationAirportID)
 
 # Function to load airports and routes from the dataset
 def load_data(graph, airports_filename, routes_filename):
     with open(airports_filename, 'r', encoding='utf-8') as airports_file:
         csv_reader = csv.DictReader(airports_file)
         for row in csv_reader:
-            graph.add_airport(Airport(
-                airport_id=row['airportid'],
-                name=row['name'],
-                city=row['city'],
-                country=row['country'],
-                iata=row['iata'],
-                icao=row['icao'],
-                latitude=row['latitude'],
-                longitude=row['longitude'],
-                altitude=row['altitude'],
-                timezone=row['timezone'],
-                type=row['type'],
-                source=row['source']
-            ))
+            graph.add_airport(Airport(**row))
             
     with open(routes_filename, 'r', encoding='utf-8') as routes_file:
         csv_reader = csv.DictReader(routes_file)
         for row in csv_reader:
-            graph.add_route(Route(
-                airline=row['airline'],
-                airline_id=row['airline_ID'],
-                source_airport_id=row['source_Airport_ID'],
-                dest_airport_id=row['destination_Airport_ID'],
-                stops=row['stops'],
-                equipment=row['equipment']
-            ))
+            graph.add_route(Route(**row))
+
 
 # Dijkstra's algorithm to find multiple paths
 def find_multiple_routes(graph, start_id, end_id, num_routes=3):
