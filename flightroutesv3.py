@@ -1,12 +1,13 @@
 import heapq
 import csv
-import plotly.graph_objects as go
 import numpy as np
+from dash import Dash, dcc, html, Input, Output, State
+import plotly.graph_objs as go
 
-# Define the Airport and Route classes
+# Define the Airport, Route, and Graph classes
 class Airport:
-    def __init__(self, airport_id, name, city, country, iata, icao, latitude, longitude, altitude, timezone, type, source):
-        self.airport_id = airport_id
+    def __init__(self, airportid, name, city, country, iata, icao, latitude, longitude, altitude, timezone, dst, tz_database_timezone, type, source):
+        self.airportid = airportid  # Ensure this matches the CSV header for airport ID
         self.name = name
         self.city = city
         self.country = country
@@ -16,64 +17,50 @@ class Airport:
         self.longitude = float(longitude)
         self.altitude = int(altitude)
         self.timezone = timezone
+        self.dst = dst
+        self.tz_database_timezone = tz_database_timezone
         self.type = type
         self.source = source
 
 class Route:
-    def __init__(self, airline, airline_id, source_airport_id, dest_airport_id, stops, equipment):
+    def __init__(self, airline, airlineID, sourceAirport, sourceAirportID, destinationAirport, destinationAirportID, codeshare, stops, equipment):
         self.airline = airline
-        self.airline_id = airline_id
-        self.source_airport_id = source_airport_id
-        self.dest_airport_id = dest_airport_id
+        self.airlineID = airlineID
+        self.sourceAirport = sourceAirport
+        self.sourceAirportID = sourceAirportID  # Ensure this matches the CSV header
+        self.destinationAirport = destinationAirport
+        self.destinationAirportID = destinationAirportID  # Ensure this matches the CSV header
+        self.codeshare = codeshare
         self.stops = int(stops)
         self.equipment = equipment
 
-# Define the Graph class
 class Graph:
     def __init__(self):
-        self.airports = {}  # Key: Airport ID, Value: Airport object
-        self.adjacency_list = {}  # Key: Airport ID, Value: List of destination Airport IDs
-    
-    def add_airport(self, airport):
-        self.airports[airport.airport_id] = airport
-        if airport.airport_id not in self.adjacency_list:
-            self.adjacency_list[airport.airport_id] = []
-    
-    def add_route(self, route):
-        if route.source_airport_id in self.airports and route.dest_airport_id in self.airports:
-            self.adjacency_list[route.source_airport_id].append(route.dest_airport_id)
+        self.airports = {}
+        self.adjacency_list = {}
 
-# Function to load airports and routes from the dataset
+    def add_airport(self, airport):
+        self.airports[airport.airportid] = airport
+        if airport.airportid not in self.adjacency_list:
+            self.adjacency_list[airport.airportid] = []
+
+    def add_route(self, route):
+        if route.sourceAirportID in self.airports and route.destinationAirportID in self.airports:
+            self.adjacency_list[route.sourceAirportID].append(route.destinationAirportID)
+
+# Load data function
 def load_data(graph, airports_filename, routes_filename):
     with open(airports_filename, 'r', encoding='utf-8') as airports_file:
         csv_reader = csv.DictReader(airports_file)
         for row in csv_reader:
-            graph.add_airport(Airport(
-                airport_id=row['airportid'],
-                name=row['name'],
-                city=row['city'],
-                country=row['country'],
-                iata=row['iata'],
-                icao=row['icao'],
-                latitude=row['latitude'],
-                longitude=row['longitude'],
-                altitude=row['altitude'],
-                timezone=row['timezone'],
-                type=row['type'],
-                source=row['source']
-            ))
-            
+            airport = Airport(**row)
+            graph.add_airport(airport)
+
     with open(routes_filename, 'r', encoding='utf-8') as routes_file:
         csv_reader = csv.DictReader(routes_file)
         for row in csv_reader:
-            graph.add_route(Route(
-                airline=row['airline'],
-                airline_id=row['airline_ID'],
-                source_airport_id=row['source_Airport_ID'],
-                dest_airport_id=row['destination_Airport_ID'],
-                stops=row['stops'],
-                equipment=row['equipment']
-            ))
+            route = Route(**row)
+            graph.add_route(route)
 
 # Dijkstra's algorithm to find multiple paths
 def find_multiple_routes(graph, start_id, end_id, num_routes=3):
@@ -118,11 +105,16 @@ def find_multiple_routes(graph, start_id, end_id, num_routes=3):
 
     return routes
 
-def plot_routes(graph, routes):
+# Create the Dash app
+app = Dash(__name__)
+graph = Graph()
+load_data(graph, 'airports.csv', 'routes.csv')
+
+# Function to generate the figure with all routes
+def create_figure(graph, routes):
     fig = go.Figure()
 
     for route_index, route in enumerate(routes, start=1):
-        # Add route segments
         for i in range(len(route) - 1):
             start_airport = graph.airports[route[i]]
             end_airport = graph.airports[route[i+1]]
@@ -131,61 +123,87 @@ def plot_routes(graph, routes):
                 lat = [start_airport.latitude, end_airport.latitude],
                 mode = 'lines+markers',
                 name = f'Route {route_index}',
-                line = dict(width = 2, color = f'rgb({255//route_index}, {55*route_index}, {50*route_index})', dash='dash'),
-                marker = dict(size = 4, color = 'blue'),
+                line = dict(width = 2),
+                marker = dict(size = 4),
                 text = [start_airport.iata, end_airport.iata],
-                hoverinfo = 'text'
+                hoverinfo = 'text',
+                customdata = [route_index]
             ))
 
-    # Customize the layout of the map
     fig.update_geos(
-        projection_type = 'orthographic',
-        showland = True,
-        landcolor = 'rgb(243, 243, 243)',
-        countrycolor = 'rgb(204, 204, 204)'
+        projection_type='orthographic',
+        showland=True,
+        landcolor='rgb(243, 243, 243)',
+        countrycolor='rgb(204, 204, 204)'
     )
     fig.update_layout(
-        title = 'Flight Routes',
-        showlegend = True,
-        geo = dict(
-            scope = 'world',
-            showland = True,
-            landcolor = 'rgb(243, 243, 243)',
-            countrycolor = 'rgb(204, 204, 204)',
-            showcountries = True,
-        )
+        title='Flight Routes',
+        showlegend=False,
+        clickmode='event+select'
     )
+    return fig
 
-    fig.show()
+# Define the layout of the app
+app.layout = html.Div([
+    dcc.Input(id='start-iata', type='text', placeholder='Enter start IATA code'),
+    dcc.Input(id='end-iata', type='text', placeholder='Enter destination IATA code'),
+    html.Button('Find Routes', id='find-routes', n_clicks=0),
+    dcc.Store(id='stored-routes'),  # Store component for the routes
+    dcc.Graph(id='flight-map'),
+    html.Div(id='flight-info', style={'margin-left': '20px'})
+])
 
+# Callback to store the routes data
+@app.callback(
+    Output('stored-routes', 'data'),
+    [Input('find-routes', 'n_clicks')],
+    [State('start-iata', 'value'), State('end-iata', 'value')]
+)
 
-def find_route_cli(graph):
-    start_iata = input("Enter start airport IATA code: ").upper()
-    end_iata = input("Enter destination airport IATA code: ").upper()
+def update_stored_routes(n_clicks, start_iata, end_iata):
+    if n_clicks > 0:
+        start_id = next((airport.airportid for airport in graph.airports.values() if airport.iata == start_iata), None)
+        end_id = next((airport.airportid for airport in graph.airports.values() if airport.iata == end_iata), None)
+        if start_id and end_id:
+            routes = find_multiple_routes(graph, start_id, end_id)
+            return routes
+    return []
 
-    start_id = next((id for id, airport in graph.airports.items() if airport.iata == start_iata), None)
-    end_id = next((id for id, airport in graph.airports.items() if airport.iata == end_iata), None)
+# Callback to update the map based on the routes data stored
+@app.callback(
+    Output('flight-map', 'figure'),
+    [Input('stored-routes', 'data')]
+)
+def update_map(routes_data):
+    if routes_data:
+        figure = create_figure(graph, routes_data)
+        return figure
+    return go.Figure()
 
-    if not start_id or not end_id:
-        print("\nInvalid airport IATA code.")
-        return
-
-    num_routes = int(input("Enter number of routes to find: "))
-    routes = find_multiple_routes(graph, start_id, end_id, num_routes)
-    
-    if not routes:
-        print("\nNo routes found.")
-    else:
-        for i, route in enumerate(routes, start=1):
-            print(f"\nRoute {i} found:")
-            for airport_id in route:
-                airport = graph.airports[airport_id]
-                print(f"{airport.name} ({airport.iata})")
-
-        plot_routes(graph, routes)
+# Callback to display the clicked route information
+@app.callback(
+    Output('flight-info', 'children'),
+    [Input('flight-map', 'clickData')],
+    [State('stored-routes', 'data')]  # Use the stored routes data
+)
+def display_click_data(clickData, routes_data):
+    if clickData is not None:
+        route_index = clickData['points'][0]['customdata'][0]
+        route = routes_data[route_index - 1]  # Adjust index since route_index starts at 1
+        info = f"Route {route_index} Information:"
         
-graph = Graph()
-load_data(graph, 'airports.csv', 'routes.csv')
+        # Generate information about the route
+        for i, airport_id in enumerate(route):
+            airport = graph.airports[airport_id]
+            if i == 0:
+                info += f" Start: {airport.name} ({airport.iata})"
+            elif i == len(route) - 1:
+                info += f" End: {airport.name} ({airport.iata})"
+            else:
+                info += f" Layover {i}: {airport.name} ({airport.iata})"
+        
+        return info
+    return "Click on a route to see the flight information."
 
-if __name__ == "__main__":
-    find_route_cli(graph)
+if __name__ == '__main__':
+    app.run_server(debug=True)
