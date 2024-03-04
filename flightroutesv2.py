@@ -40,115 +40,126 @@ class Graph:
             self.adjacency_list[airport.airport_id] = []
     
     def add_route(self, route):
-        if route.source_airport_id in self.airports and route.dest_airport_id in self.airports:  # Ensure both airports exist
+        if route.source_airport_id in self.airports and route.dest_airport_id in self.airports:
             self.adjacency_list[route.source_airport_id].append(route.dest_airport_id)
 
-    def get_all_routes(self, start_iata, end_iata):
-        return [(route.source_airport_id, route.dest_airport_id) for route in self.routes if route.source_airport_iata == start_iata and route.dest_airport_iata == end_iata]
-
-# Function to load airports from the dataset
-def load_airports(graph, filename):
-    with open(filename, 'r', encoding='utf-8') as file:
-        csv_reader = csv.DictReader(file)
+# Function to load airports and routes from the dataset
+def load_data(graph, airports_filename, routes_filename):
+    with open(airports_filename, 'r', encoding='utf-8') as airports_file:
+        csv_reader = csv.DictReader(airports_file)
         for row in csv_reader:
-            try:
-                # Convert latitude, longitude, and altitude to appropriate types
-                latitude = float(row['latitude'])
-                longitude = float(row['longitude'])
-                altitude = int(row['altitude'])
-            except ValueError as e:
-                print(f"Skipping airport due to parsing error: {row['airportid']},\"{row['name']}\", error: {e}")
-                continue
-            
-            airport = Airport(
+            graph.add_airport(Airport(
                 airport_id=row['airportid'],
                 name=row['name'],
                 city=row['city'],
                 country=row['country'],
                 iata=row['iata'],
                 icao=row['icao'],
-                latitude=latitude,
-                longitude=longitude,
-                altitude=altitude,
+                latitude=row['latitude'],
+                longitude=row['longitude'],
+                altitude=row['altitude'],
                 timezone=row['timezone'],
                 type=row['type'],
                 source=row['source']
-            )
-            graph.add_airport(airport)
-
-# Function to load routes from the dataset
-def load_routes(graph, filename):
-    with open(filename, 'r', encoding='utf-8') as file:
-        csv_reader = csv.DictReader(file)
+            ))
+            
+    with open(routes_filename, 'r', encoding='utf-8') as routes_file:
+        csv_reader = csv.DictReader(routes_file)
         for row in csv_reader:
-            route = Route(
+            graph.add_route(Route(
                 airline=row['airline'],
                 airline_id=row['airline_ID'],
                 source_airport_id=row['source_Airport_ID'],
                 dest_airport_id=row['destination_Airport_ID'],
-                stops=int(row['stops']),
+                stops=row['stops'],
                 equipment=row['equipment']
-            )
-            graph.add_route(route)
+            ))
 
+# Dijkstra's algorithm to find multiple paths
+def find_multiple_routes(graph, start_id, end_id, num_routes=3):
+    def dijkstra_with_exclusions(excluded_paths):
+        distances = {airport_id: float('infinity') for airport_id in graph.airports}
+        previous = {airport_id: None for airport_id in graph.airports}
+        distances[start_id] = 0
+        pq = [(0, start_id)]
 
-# Simplified Dijkstra's algorithm
-def dijkstra(graph, start_id, end_id):
-    distances = {airport_id: float('infinity') for airport_id in graph.airports}
-    previous = {airport_id: None for airport_id in graph.airports}
-    distances[start_id] = 0
-    pq = [(0, start_id)]
-    
-    while pq:
-        current_distance, current_vertex = heapq.heappop(pq)
-        
-        if current_vertex == end_id:
+        while pq:
+            current_distance, current_vertex = heapq.heappop(pq)
+            if current_vertex == end_id:
+                break
+
+            for neighbor in graph.adjacency_list[current_vertex]:
+                if [current_vertex, neighbor] in excluded_paths:
+                    continue
+
+                distance = current_distance + 1
+                if distance < distances[neighbor]:
+                    distances[neighbor] = distance
+                    previous[neighbor] = current_vertex
+                    heapq.heappush(pq, (distance, neighbor))
+
+        path, current_vertex = [], end_id
+        while current_vertex is not None:
+            path.insert(0, current_vertex)
+            current_vertex = previous[current_vertex]
+
+        return path if path[0] == start_id else []
+
+    routes = []
+    excluded_paths = []
+
+    for _ in range(num_routes):
+        path = dijkstra_with_exclusions(excluded_paths)
+        if not path or path in routes:
             break
-        
-        for neighbor in graph.adjacency_list[current_vertex]:
-            distance = current_distance + 1
-            if distance < distances[neighbor]:
-                distances[neighbor] = distance
-                previous[neighbor] = current_vertex
-                heapq.heappush(pq, (distance, neighbor))
-    
-    path, current_vertex = [], end_id
-    while current_vertex is not None:
-        path.append(current_vertex)
-        current_vertex = previous[current_vertex]
-    path.reverse()
-    
-    return path if path[0] == start_id else []
+        routes.append(path)
+        for i in range(len(path) - 1):
+            excluded_paths.append([path[i], path[i+1]])
 
-def validate_coordinates(lon, lat):
-    return np.isfinite(lon) and np.isfinite(lat) and -180 <= lon <= 180 and -90 <= lat <= 90
+    return routes
 
-def plot_great_circle(start_lon, start_lat, end_lon, end_lat):
+def plot_routes(graph, routes):
     fig = go.Figure()
 
-    # Add great circle route using the Scattergeo plot type
-    fig.add_trace(go.Scattergeo(
-        lon = [start_lat, end_lat],
-        lat = [start_lon, end_lon],
-        mode = 'lines+markers',
-        line = dict(width = 2, color = 'red', dash='dash'),
-        geo = 'geo'
-    ))
-    
+    for route_index, route in enumerate(routes, start=1):
+        # Add route segments
+        for i in range(len(route) - 1):
+            start_airport = graph.airports[route[i]]
+            end_airport = graph.airports[route[i+1]]
+            fig.add_trace(go.Scattergeo(
+                lon = [start_airport.longitude, end_airport.longitude],
+                lat = [start_airport.latitude, end_airport.latitude],
+                mode = 'lines+markers',
+                name = f'Route {route_index}',
+                line = dict(width = 2, color = f'rgb({255//route_index}, {55*route_index}, {50*route_index})', dash='dash'),
+                marker = dict(size = 4, color = 'blue'),
+                text = [start_airport.iata, end_airport.iata],
+                hoverinfo = 'text'
+            ))
+
     # Customize the layout of the map
+    fig.update_geos(
+        projection_type = 'orthographic',
+        showland = True,
+        landcolor = 'rgb(243, 243, 243)',
+        countrycolor = 'rgb(204, 204, 204)'
+    )
     fig.update_layout(
-        showlegend = False,
+        title = 'Flight Routes',
+        showlegend = True,
         geo = dict(
-            projection_type = 'orthographic',
+            scope = 'world',
             showland = True,
             landcolor = 'rgb(243, 243, 243)',
             countrycolor = 'rgb(204, 204, 204)',
-        ),
+            showcountries = True,
+        )
     )
 
     fig.show()
 
-def find_route_cli():
+
+def find_route_cli(graph):
     start_iata = input("Enter start airport IATA code: ").upper()
     end_iata = input("Enter destination airport IATA code: ").upper()
 
@@ -159,23 +170,22 @@ def find_route_cli():
         print("\nInvalid airport IATA code.")
         return
 
-    path = dijkstra(graph, start_id, end_id)
-    if not path:
-        print("\nNo route found.")
+    num_routes = int(input("Enter number of routes to find: "))
+    routes = find_multiple_routes(graph, start_id, end_id, num_routes)
+    
+    if not routes:
+        print("\nNo routes found.")
     else:
-        print("\nRoute found:")
-        for airport_id in path:
-            airport = graph.airports[airport_id]
-            print(f"{airport.name} ({airport.iata})")
-            
-        # Plot the route on the map
-        start_airport = graph.airports[path[0]]
-        end_airport = graph.airports[path[-1]]
-        plot_great_circle(start_airport.latitude, start_airport.longitude, end_airport.latitude, end_airport.longitude)
+        for i, route in enumerate(routes, start=1):
+            print(f"\nRoute {i} found:")
+            for airport_id in route:
+                airport = graph.airports[airport_id]
+                print(f"{airport.name} ({airport.iata})")
 
+        plot_routes(graph, routes)
+        
 graph = Graph()
-load_airports(graph, 'airports.csv')
-load_routes(graph, 'routes.csv')
+load_data(graph, 'airports.csv', 'routes.csv')
 
 if __name__ == "__main__":
-    find_route_cli()
+    find_route_cli(graph)
