@@ -121,34 +121,43 @@ def find_multiple_routes(graph, start_id, end_id, num_routes=3):
 def plot_routes(graph, routes):
     fig = go.Figure()
 
-    for i, route in enumerate(routes):
-        for j in range(len(route) - 1):
-            start_airport = graph.airports[route[j]]
-            end_airport = graph.airports[route[j + 1]]
-            
+    for route_index, route in enumerate(routes, start=1):
+        # Add route segments
+        for i in range(len(route) - 1):
+            start_airport = graph.airports[route[i]]
+            end_airport = graph.airports[route[i+1]]
             fig.add_trace(go.Scattergeo(
-                locationmode = 'ISO-3',
                 lon = [start_airport.longitude, end_airport.longitude],
                 lat = [start_airport.latitude, end_airport.latitude],
-                mode = 'lines',
-                line = dict(width = 2, color = f'rgb({np.random.randint(0, 255)}, {np.random.randint(0, 255)}, {np.random.randint(0, 255)})'),
-                name = f'Route {i+1} - Segment {j+1}'
+                mode = 'lines+markers',
+                name = f'Route {route_index}',
+                line = dict(width = 2, color = f'rgb({255//route_index}, {55*route_index}, {50*route_index})', dash='dash'),
+                marker = dict(size = 4, color = 'blue'),
+                text = [start_airport.iata, end_airport.iata],
+                hoverinfo = 'text'
             ))
 
+    # Customize the layout of the map
     fig.update_geos(
         projection_type = 'orthographic',
         showland = True,
         landcolor = 'rgb(243, 243, 243)',
         countrycolor = 'rgb(204, 204, 204)'
     )
-    
     fig.update_layout(
-        title_text = 'Multiple Flight Routes',
+        title = 'Flight Routes',
         showlegend = True,
-        legend_title_text='Routes'
+        geo = dict(
+            scope = 'world',
+            showland = True,
+            landcolor = 'rgb(243, 243, 243)',
+            countrycolor = 'rgb(204, 204, 204)',
+            showcountries = True,
+        )
     )
-    
+
     fig.show()
+
 
 def find_route_cli(graph):
     start_iata = input("Enter start airport IATA code: ").upper()
