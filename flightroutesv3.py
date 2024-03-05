@@ -111,48 +111,65 @@ graph = Graph()
 load_data(graph, 'airports.csv', 'routes.csv')
 
 # Function to generate the figure with all routes
-def create_figure(graph, routes):
+def plot_routes(graph, routes):
     fig = go.Figure()
 
+    # Define a list of colors for the routes
+    colors = ['red', 'blue', 'green', 'purple', 'orange', 'yellow', 'pink', 'cyan']
+
     for route_index, route in enumerate(routes, start=1):
+        color = colors[route_index % len(colors)]  # Cycle through colors list
+
+        # Create a list to hold the latitude and longitude of each airport in the route
+        latitudes = []
+        longitudes = []
+        hover_texts = []
+
+        # Add route segments
         for i in range(len(route) - 1):
             start_airport = graph.airports[route[i]]
             end_airport = graph.airports[route[i+1]]
-            # Use the airport name for hover text instead of the IATA code
-            hover_text = [f"{start_airport.name} ({start_airport.iata})", 
-                            f"{end_airport.name} ({end_airport.iata})"]
-            fig.add_trace(go.Scattergeo(
-                lon = [start_airport.longitude, end_airport.longitude],
-                lat = [start_airport.latitude, end_airport.latitude],
-                mode = 'lines+markers',
-                name = f'Route {route_index}',
-                line = dict(width = 2),
-                marker = dict(size = 4),
-                text = hover_text,
-                hoverinfo = 'text',
-                customdata = [route_index]
-            ))
+            latitudes.extend([start_airport.latitude, end_airport.latitude, None])  # None to create separate lines
+            longitudes.extend([start_airport.longitude, end_airport.longitude, None])
+            hover_texts.extend([f"{start_airport.name} ({start_airport.iata})", 
+                                f"{end_airport.name} ({end_airport.iata})", None])
 
+        # Plot the route using a single color
+        fig.add_trace(go.Scattergeo(
+            lon=longitudes,
+            lat=latitudes,
+            mode='lines+markers',
+            name=f'Route {route_index}',
+            line=dict(width=2, color=color),
+            marker=dict(size=4, color=color),
+            text=hover_texts[:-1],  # Exclude the last None value
+            hoverinfo='text'
+        ))
+
+    # Customize the layout of the map
     fig.update_geos(
-        projection_type = 'orthographic',
-        showland = True,
-        landcolor = 'rgb(243, 243, 243)',
-        countrycolor = 'rgb(204, 204, 204)',
-    ),
+        projection_type='orthographic',
+        showland=True,
+        landcolor='rgb(243, 243, 243)',
+        countrycolor='rgb(204, 204, 204)',
+        projection_rotation = dict(lat=latitudes[0], lon = longitudes[0])
+    )
     fig.update_layout(
-        title = 'Flight Routes',
-        showlegend = True,
-        geo = dict(
-            scope = "world",
-            showland = True,
+        title='Flight Routes',
+        showlegend=True,
+        geo=dict(
+            scope="world",
+            showland=True,
             landcolor='rgb(243, 243, 243)',
             countrycolor='rgb(204, 204, 204)',
             showcountries=True,
             showsubunits=True,
+            
         ),
         clickmode='event+select',
         autosize=True
     )
+
     return fig
 
 # Define the layout of the app
@@ -189,7 +206,7 @@ def update_stored_routes(n_clicks, start_iata, end_iata):
 )
 def update_map(routes_data):
     if routes_data:
-        figure = create_figure(graph, routes_data)
+        figure = plot_routes(graph, routes_data)
         return figure
     return go.Figure()
 
