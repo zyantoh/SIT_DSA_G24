@@ -131,15 +131,24 @@ def create_figure(graph, routes):
             ))
 
     fig.update_geos(
-        projection_type='orthographic',
-        showland=True,
-        landcolor='rgb(243, 243, 243)',
-        countrycolor='rgb(204, 204, 204)'
-    )
+        projection_type = 'orthographic',
+        showland = True,
+        landcolor = 'rgb(243, 243, 243)',
+        countrycolor = 'rgb(204, 204, 204)',
+    ),
     fig.update_layout(
-        title='Flight Routes',
-        showlegend=False,
-        clickmode='event+select'
+        title = 'Flight Routes',
+        showlegend = True,
+        geo = dict(
+            scope = "world",
+            showland = True,
+            landcolor='rgb(243, 243, 243)',
+            countrycolor='rgb(204, 204, 204)',
+            showcountries=True,
+            showsubunits=True,
+        ),
+        clickmode='event+select',
+        autosize=True
     )
     return fig
 
@@ -149,7 +158,7 @@ app.layout = html.Div([
     dcc.Input(id='end-iata', type='text', placeholder='Enter destination IATA code'),
     html.Button('Find Routes', id='find-routes', n_clicks=0),
     dcc.Store(id='stored-routes'),  # Store component for the routes
-    dcc.Graph(id='flight-map'),
+    dcc.Graph(id='flight-map', style={'height': '90vh'}),  # Adjust 'height' as desired
     html.Div(id='flight-info', style={'margin-left': '20px'})
 ])
 
@@ -203,7 +212,7 @@ def display_click_data(clickData, routes_data):
                 info += f" Layover {i}: {airport.name} ({airport.iata})"
         
         return info
-    return "Click on a route to see the flight information."
+    # return "Click on a route to see the flight information."
 
 if __name__ == '__main__':
     app.run_server(debug=True)
