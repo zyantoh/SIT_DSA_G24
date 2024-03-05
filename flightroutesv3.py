@@ -118,6 +118,9 @@ def create_figure(graph, routes):
         for i in range(len(route) - 1):
             start_airport = graph.airports[route[i]]
             end_airport = graph.airports[route[i+1]]
+            # Use the airport name for hover text instead of the IATA code
+            hover_text = [f"{start_airport.name} ({start_airport.iata})", 
+                              f"{end_airport.name} ({end_airport.iata})"]
             fig.add_trace(go.Scattergeo(
                 lon = [start_airport.longitude, end_airport.longitude],
                 lat = [start_airport.latitude, end_airport.latitude],
@@ -125,7 +128,7 @@ def create_figure(graph, routes):
                 name = f'Route {route_index}',
                 line = dict(width = 2),
                 marker = dict(size = 4),
-                text = [start_airport.iata, end_airport.iata],
+                text = hover_text,
                 hoverinfo = 'text',
                 customdata = [route_index]
             ))
@@ -161,6 +164,7 @@ app.layout = html.Div([
     dcc.Graph(id='flight-map', style={'height': '90vh'}),  # Adjust 'height' as desired
     html.Div(id='flight-info', style={'margin-left': '20px'})
 ])
+
 
 # Callback to store the routes data
 @app.callback(
