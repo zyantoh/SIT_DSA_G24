@@ -172,16 +172,21 @@ def plot_routes(graph, route_infos):
             hover_texts.extend([f"{start_airport.name} ({start_airport.iata})", 
                                 f"{end_airport.name} ({end_airport.iata})", None])
 
+        # Get the IATA codes for the original start and final destination
+        start_iata = graph.airports[route[0]].iata
+        end_iata = graph.airports[route[-1]].iata
+
         # Plot the route using a single color
         fig.add_trace(go.Scattergeo(
             lon=longitudes,
             lat=latitudes,
             mode='lines+markers',
-            name=f'Route {route_index} - Distance: {distance:.2f} km, Cost: ${cost:.2f}',
+            name=f'Route{route_index}, Distance: {distance:.2f} km, Cost: ${cost:.2f}',
             line=dict(width=2, color=color),
             marker=dict(size=4, color=color),
             text=hover_texts[:-1],  # Exclude the last None value
-            hoverinfo='text'
+            hoverinfo='text',
+            customdata=[[route_index]],  # Include the route index and segment index
         ))
 
     # The center for the orthographic projection is set to the start of the first route
@@ -190,11 +195,10 @@ def plot_routes(graph, route_infos):
 
     # Customize the layout of the map
     fig.update_geos(
-        projection_type='orthographic',
+        projection_type='natural earth',
         showland=True,
         landcolor='rgb(243, 243, 243)',
         countrycolor='rgb(204, 204, 204)',
-        projection_rotation=dict(lat=center_lat, lon=center_lon),
     )
     fig.update_layout(
         title='Flight Routes',
@@ -206,11 +210,11 @@ def plot_routes(graph, route_infos):
             countrycolor='rgb(204, 204, 204)',
             showcountries=True,
             showsubunits=True,
+            showframe=False
         ),
         clickmode='event+select',
         autosize=True
     )
-
     return fig
 
 
@@ -220,7 +224,7 @@ app.layout = html.Div([
     dcc.Input(id='end-iata', type='text', placeholder='Enter destination IATA code'),
     html.Button('Find Routes', id='find-routes', n_clicks=0),
     dcc.Store(id='stored-routes'),  # Store component for the routes
-    dcc.Graph(id='flight-map', style={'height': '90vh'}),  # Adjust 'height' as desired
+    dcc.Graph(id='flight-map', style={'height': '80vh'}),  # Adjust 'height' as desired
     html.Div(id='flight-info', style={'margin-left': '20px'})
 ])
 
@@ -252,30 +256,45 @@ def update_map(routes_data):
         return figure
     return go.Figure()
 
-# Callback to display the clicked route information
 @app.callback(
     Output('flight-info', 'children'),
     [Input('flight-map', 'clickData')],
-    [State('stored-routes', 'data')]  # Use the stored routes data
+    [State('stored-routes', 'data')]
 )
 def display_click_data(clickData, routes_data):
-    if clickData is not None:
-        route_index = clickData['points'][0]['customdata'][0]
-        route = routes_data[route_index - 1]  # Adjust index since route_index starts at 1
-        info = f"Route {route_index} Information:"
-        
-        # Generate information about the route
-        for i, airport_id in enumerate(route):
-            airport = graph.airports[airport_id]
-            if i == 0:
-                info += f" Start: {airport.name} ({airport.iata})"
-            elif i == len(route) - 1:
-                info += f" End: {airport.name} ({airport.iata})"
-            else:
-                info += f" Layover {i}: {airport.name} ({airport.iata})"
-        
-        return info
-    # return "Click on a route to see the flight information."
+    if clickData:
+        points = clickData.get('points', [])
+        if points:
+            route_index = points[0]['curveNumber']  # assuming curveNumber is used to index the routes
+            route_info = routes_data[route_index]  # retrieve the selected route information
+
+            # Generate information about the route
+            info = [
+                html.Div([
+                    html.Strong("Route Information:"),
+                    html.Br(),
+                    f"Start: {graph.airports[route_info['route'][0]].name} ({graph.airports[route_info['route'][0]].iata})",
+                    html.Br()
+                ])
+            ]
+            
+            # List all layovers except the first and last points
+            layovers = [graph.airports[airport_id].name + f" ({graph.airports[airport_id].iata})"
+                        for airport_id in route_info['route'][1:-1]]
+            if layovers:
+                info.append("Layover(s): " + ", ".join(layovers))
+                info.append(html.Br())
+            
+            info.extend([
+                f"End: {graph.airports[route_info['route'][-1]].name} ({graph.airports[route_info['route'][-1]].iata})",
+                html.Br(),
+                f"Total Distance: {route_info['distance']:.2f} km",
+                html.Br(),
+                f"Estimated Cost: ${route_info['cost']:.2f}"
+            ])
+
+            return info
+    return "Click on a route to see detailed information."
 
 if __name__ == '__main__':
     app.run_server(debug=True)
