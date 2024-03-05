@@ -112,6 +112,9 @@ def plot_routes(graph, routes):
         for i in range(len(route) - 1):
             start_airport = graph.airports[route[i]]
             end_airport = graph.airports[route[i+1]]
+            # Use the airport name for hover text instead of the IATA code
+            hover_text = [f"{start_airport.name} ({start_airport.iata})", 
+                            f"{end_airport.name} ({end_airport.iata})"]
             fig.add_trace(go.Scattergeo(
                 lon = [start_airport.longitude, end_airport.longitude],
                 lat = [start_airport.latitude, end_airport.latitude],
@@ -119,7 +122,7 @@ def plot_routes(graph, routes):
                 name = f'Route {route_index}',
                 line = dict(width = 2, color = f'rgb({255//route_index}, {55*route_index}, {50*route_index})', dash='dash'),
                 marker = dict(size = 4, color = 'blue'),
-                text = [start_airport.iata, end_airport.iata],
+                text = hover_text,
                 hoverinfo = 'text'
             ))
 
