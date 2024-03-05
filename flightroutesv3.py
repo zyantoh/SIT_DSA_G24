@@ -3,6 +3,7 @@ import csv
 import numpy as np
 from dash import Dash, dcc, html, Input, Output, State
 import plotly.graph_objs as go
+from math import radians, cos, sin, asin, sqrt
 
 # Define the Airport, Route, and Graph classes
 class Airport:
@@ -62,9 +63,27 @@ def load_data(graph, airports_filename, routes_filename):
             route = Route(**row)
             graph.add_route(route)
 
+def haversine(lat1, lon1, lat2, lon2):
+    # Calculate the great circle distance in kilometers between two points on the earth specified in decimal degrees.
+    # Convert decimal degrees to radians
+    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+
+    # Haversine formula
+    dlon = lon2 - lon1 
+    dlat = lat2 - lat1 
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * asin(sqrt(a)) 
+    r = 6371 # Radius of Earth in kilometers
+    return c * r
+
+def estimate_cost(distance, cost_per_km=0.1):
+    # Estimate the cost of a flight given the distance.
+    return distance * cost_per_km
+
+
 # Dijkstra's algorithm to find multiple paths
-def find_multiple_routes(graph, start_id, end_id, num_routes=3):
-    def dijkstra_with_exclusions(excluded_paths):
+def find_multiple_routes(graph, start_id, end_id, num_routes=3, cost_per_km=0.1):
+    def dijkstra_with_exclusions(start_id, end_id, excluded_paths):
         distances = {airport_id: float('infinity') for airport_id in graph.airports}
         previous = {airport_id: None for airport_id in graph.airports}
         distances[start_id] = 0
@@ -92,18 +111,35 @@ def find_multiple_routes(graph, start_id, end_id, num_routes=3):
 
         return path if path[0] == start_id else []
 
-    routes = []
+    routes_info = []
     excluded_paths = []
 
     for _ in range(num_routes):
-        path = dijkstra_with_exclusions(excluded_paths)
-        if not path or path in routes:
-            break
-        routes.append(path)
+        path = dijkstra_with_exclusions(start_id, end_id, excluded_paths)
+        if not path or any(path == route_info['route'] for route_info in routes_info):
+            break  # Stop if no path found or if the path is already included
+
+        # Calculate the total distance for the route
+        total_distance = sum(haversine(
+            graph.airports[path[i]].latitude, graph.airports[path[i]].longitude,
+            graph.airports[path[i+1]].latitude, graph.airports[path[i+1]].longitude
+        ) for i in range(len(path) - 1))
+        
+        # Estimate the total cost for the route
+        total_cost = estimate_cost(total_distance, cost_per_km)
+        
+        # Add the path, distance, and cost to the routes_info
+        routes_info.append({
+            'route': path,
+            'distance': total_distance,
+            'cost': total_cost
+        })
+        
+        # Add the edges of the path to the excluded_paths to prevent reuse
         for i in range(len(path) - 1):
             excluded_paths.append([path[i], path[i+1]])
-
-    return routes
+            
+    return routes_info
 
 # Create the Dash app
 app = Dash(__name__)
@@ -111,16 +147,18 @@ graph = Graph()
 load_data(graph, 'airports.csv', 'routes.csv')
 
 # Function to generate the figure with all routes
-def plot_routes(graph, routes):
+def plot_routes(graph, route_infos):
     fig = go.Figure()
 
     # Define a list of colors for the routes
     colors = ['red', 'blue', 'green', 'purple', 'orange', 'yellow', 'pink', 'cyan']
 
-    for route_index, route in enumerate(routes, start=1):
+    for route_index, route_info in enumerate(route_infos, start=1):
+        route = route_info['route']
+        distance = route_info['distance']
+        cost = route_info['cost']
         color = colors[route_index % len(colors)]  # Cycle through colors list
 
-        # Create a list to hold the latitude and longitude of each airport in the route
         latitudes = []
         longitudes = []
         hover_texts = []
@@ -128,7 +166,7 @@ def plot_routes(graph, routes):
         # Add route segments
         for i in range(len(route) - 1):
             start_airport = graph.airports[route[i]]
-            end_airport = graph.airports[route[i+1]]
+            end_airport = graph.airports[route[i + 1]]
             latitudes.extend([start_airport.latitude, end_airport.latitude, None])  # None to create separate lines
             longitudes.extend([start_airport.longitude, end_airport.longitude, None])
             hover_texts.extend([f"{start_airport.name} ({start_airport.iata})", 
@@ -139,12 +177,16 @@ def plot_routes(graph, routes):
             lon=longitudes,
             lat=latitudes,
             mode='lines+markers',
-            name=f'Route {route_index}',
+            name=f'Route {route_index} - Distance: {distance:.2f} km, Cost: ${cost:.2f}',
             line=dict(width=2, color=color),
             marker=dict(size=4, color=color),
             text=hover_texts[:-1],  # Exclude the last None value
             hoverinfo='text'
         ))
+
+    # The center for the orthographic projection is set to the start of the first route
+    center_lat = graph.airports[route_infos[0]['route'][0]].latitude if route_infos else 0
+    center_lon = graph.airports[route_infos[0]['route'][0]].longitude if route_infos else 0
 
     # Customize the layout of the map
     fig.update_geos(
@@ -152,7 +194,7 @@ def plot_routes(graph, routes):
         showland=True,
         landcolor='rgb(243, 243, 243)',
         countrycolor='rgb(204, 204, 204)',
-        projection_rotation = dict(lat=latitudes[0], lon = longitudes[0])
+        projection_rotation=dict(lat=center_lat, lon=center_lon),
     )
     fig.update_layout(
         title='Flight Routes',
@@ -164,13 +206,13 @@ def plot_routes(graph, routes):
             countrycolor='rgb(204, 204, 204)',
             showcountries=True,
             showsubunits=True,
-            
         ),
         clickmode='event+select',
         autosize=True
     )
 
     return fig
+
 
 # Define the layout of the app
 app.layout = html.Div([
