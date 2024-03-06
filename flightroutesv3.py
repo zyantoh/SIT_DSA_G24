@@ -181,7 +181,7 @@ def plot_routes(graph, route_infos):
             lon=longitudes,
             lat=latitudes,
             mode='lines+markers',
-            name=f'Route{route_index}, Distance: {distance:.2f} km, Cost: ${cost:.2f}',
+            name=f'Route {route_index}',
             line=dict(width=2, color=color),
             marker=dict(size=4, color=color),
             text=hover_texts[:-1],  # Exclude the last None value
@@ -224,7 +224,7 @@ app.layout = html.Div([
     dcc.Input(id='end-iata', type='text', placeholder='Enter destination IATA code'),
     html.Button('Find Routes', id='find-routes', n_clicks=0),
     dcc.Store(id='stored-routes'),  # Store component for the routes
-    dcc.Graph(id='flight-map', style={'height': '80vh'}),  # Adjust 'height' as desired
+    dcc.Graph(id='flight-map', style={'height': '70vh'}),  # Adjust 'height' as desired
     html.Div(id='flight-info', style={'margin-left': '20px'})
 ])
 
@@ -268,32 +268,39 @@ def display_click_data(clickData, routes_data):
             route_index = points[0]['curveNumber']  # assuming curveNumber is used to index the routes
             route_info = routes_data[route_index]  # retrieve the selected route information
 
-            # Generate information about the route
+            # Initialize the list for the route information
             info = [
-                html.Div([
-                    html.Strong("Route Information:"),
-                    html.Br(),
-                    f"Start: {graph.airports[route_info['route'][0]].name} ({graph.airports[route_info['route'][0]].iata})",
-                    html.Br()
-                ])
+                html.Strong("Route Information:"),
+                html.Br(),
+                html.Strong("Start: "),
+                f"{graph.airports[route_info['route'][0]].name} ({graph.airports[route_info['route'][0]].iata}), {graph.airports[route_info['route'][0]].country}",
+                html.Br(), html.Br()
             ]
             
-            # List all layovers except the first and last points
-            layovers = [graph.airports[airport_id].name + f" ({graph.airports[airport_id].iata})"
-                        for airport_id in route_info['route'][1:-1]]
-            if layovers:
-                info.append("Layover(s): " + ", ".join(layovers))
+            # Add layovers if there are any
+            layovers_info = [
+                f"{i+1}. {graph.airports[airport_id].name} ({graph.airports[airport_id].iata}), {graph.airports[airport_id].country}"
+                for i, airport_id in enumerate(route_info['route'][1:-1])
+            ]
+            if layovers_info:
+                info.append(html.Strong("Layover(s):"))
+                info.append(html.Br())
+                info.extend([html.Div(layover) for layover in layovers_info])
                 info.append(html.Br())
             
-            info.extend([
-                f"End: {graph.airports[route_info['route'][-1]].name} ({graph.airports[route_info['route'][-1]].iata})",
-                html.Br(),
-                f"Total Distance: {route_info['distance']:.2f} km",
-                html.Br(),
-                f"Estimated Cost: ${route_info['cost']:.2f}"
-            ])
-
-            return info
+            # Add the end airport information
+            info.append(html.Strong("End: "))
+            info.append(
+                f"{graph.airports[route_info['route'][-1]].name} ({graph.airports[route_info['route'][-1]].iata}), {graph.airports[route_info['route'][-1]].country}"
+            )
+            info.append(html.Br())
+            info.append(html.Br())
+            
+            # Add total distance and estimated cost
+            info.append(html.Div(f"Total Distance: {route_info['distance']:.2f} km"))
+            info.append(html.Div(f"Estimated Cost: ${route_info['cost']:.2f}"))
+            
+            return html.Div(info, style={'white-space': 'pre-line'})
     return "Click on a route to see detailed information."
 
 if __name__ == '__main__':
