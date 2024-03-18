@@ -93,8 +93,13 @@ def potential(graph, start_id, end_id):
     
 
 # Dijkstra's algorithm with weighted edge (A* algorithm) to find multiple paths
-def find_multiple_routes(graph, start_id, end_id, num_routes=3, cost_per_km=0.1):
+# A* formula : f(n) = g(n) + h(n)
+def find_multiple_routes(graph, start_id, end_id, num_routes=1, cost_per_km=0.1):
     def dijkstra_with_exclusions(start_id, end_id, excluded_paths):
+        #airport id:f(n)
+        open = {}
+        close = {start_id:0}
+
         #map of vertices starting with infinity value 
         distances = {airport_id: float('infinity') for airport_id in graph.airports}
 
@@ -107,7 +112,7 @@ def find_multiple_routes(graph, start_id, end_id, num_routes=3, cost_per_km=0.1)
         #(current distance, current vertex)
         pq = [(0, start_id)]
 
-        #potential gets smaller the closer it gets to its destination
+        #potential distance between start to end
         original_potential = potential(graph, start_id, end_id)
 
         while pq:
@@ -120,27 +125,79 @@ def find_multiple_routes(graph, start_id, end_id, num_routes=3, cost_per_km=0.1)
                 break
             #reach out to all nearby nodes
             for neighbor in graph.adjacency_list[current_vertex]:
-                neighbor_vertex_potential = potential(graph, neighbor, end_id)
-                weight_of_edge = original_potential + neighbor_vertex_potential - current_vertex_potential
+                #number_of_adj = len(graph.adjacency_list[current_vertex])
+                
+                #potential weight from neighbour to end
+                neighbour_vertex_potential = potential(graph, neighbor, end_id)
+                #weight of edge between current vertex and neighbouring vertex
+                # h(n)
+                weight_of_edge = original_potential + neighbour_vertex_potential - current_vertex_potential
+                
                 if [current_vertex, neighbor] in excluded_paths:
                     continue
+
+                
                 #distance is the distance of the neighbouring vertex
-                distance = current_distance + 1
+                #(OLD CODE) distance = current_distance + 1
+                # g(n) = distance from start to current vertex + distance from current vertex to neighbouring vertex 
+                # distance from current vertex to neighbour vertex  
+                distance = current_distance + potential(graph, current_vertex, neighbor)
                 #updates neighbouring vertex distance if it took a shorter distance
                 if distance < distances[neighbor]:
-                    distances[neighbor] = distance
-                    previous[neighbor] = current_vertex
+                    distances[neighbor] = distance # closest distance from start
+                    previous[neighbor] = current_vertex # previous vertex path taken
 
-                    # only add vertix to heap if it is closer to the end vertix
-                    if weight_of_edge <= current_vertex_potential:
-                        heapq.heappush(pq, (distance, neighbor))
+                #f(n) : weight of each vertex 
+                weight_of_vertex = distance + weight_of_edge
+                #open map stores weight of edge
+                open[neighbor] = weight_of_vertex
 
-        path, current_vertex = [], end_id
-        while current_vertex is not None:
-            path.insert(0, current_vertex)
-            current_vertex = previous[current_vertex]
+            #sort in ascending order based on value
+            sorted_open = {} 
+            sorted_open = sorted(open.items(), key=lambda x:x[1])
+
+            #if close has only starting id. Add first neighbour
+            if close == {start_id:0}:
+                # neighbor : parent 
+                close[sorted_open[0][0]] = start_id 
+            
+            else:
+                #if shortest next vertex's parent does not match with the last key in close map, else condition
+                if (list(close.keys()))[-1] == previous[sorted_open[0][0]]:
+                    #add neighbor : parent
+                    close[sorted_open[0][0]] = previous[sorted_open[0][0]]
+                    
+                else:
+                    close2 ={}
+                    for close_key, close_value in close.item():
+                        #check if the parent vertex is the incoming vertex's parent
+                        if close_key != sorted_open[0][0]:
+                            close2[close_key] = close[close_key]
+                        else:
+                            #backtracking
+                            close2[close_key] = close[close_key]
+                            close.clear()
+                            close = close2.copy()
+                            close2.clear()
+                            #move vertex from open to close
+                            close[sorted_open[0][0]] = open.pop(sorted_open[0][0])
+                        
+            
+            heapq.heappush(pq, (distances[(list(close.keys()))[-1]], (list(close.keys()))[-1]))
+                    
+        path = []   
+                    
+        for i in close:
+            # from start to end
+            path.append(i)
 
         return path if path[0] == start_id else []
+        '''path, current_vertex = [], end_id
+        while current_vertex is not None:
+            path.insert(0, current_vertex)
+            current_vertex = close[current_vertex] #!!!ERROR!!!
+
+        return path if path[0] == start_id else []'''
         #---end of dijkstra_with_exclusions function---
     
     #---------------------------------------------------------

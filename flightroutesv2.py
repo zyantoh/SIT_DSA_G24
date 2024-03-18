@@ -64,20 +64,31 @@ def load_data(graph, airports_filename, routes_filename):
 # Dijkstra's algorithm to find multiple paths
 def find_multiple_routes(graph, start_id, end_id, num_routes=3):
     def dijkstra_with_exclusions(excluded_paths):
+
+        #map of vertices starting with infinity value 
         distances = {airport_id: float('infinity') for airport_id in graph.airports}
+
+        #map of vertices that have been visited before 
         previous = {airport_id: None for airport_id in graph.airports}
+
+        #set starting distance to 0
         distances[start_id] = 0
+
+        #(current distance, current vertex)
         pq = [(0, start_id)]
 
         while pq:
             current_distance, current_vertex = heapq.heappop(pq)
+
+            # destination reached
             if current_vertex == end_id:
                 break
 
+            # 
             for neighbor in graph.adjacency_list[current_vertex]:
                 if [current_vertex, neighbor] in excluded_paths:
                     continue
-
+                
                 distance = current_distance + 1
                 if distance < distances[neighbor]:
                     distances[neighbor] = distance
@@ -94,6 +105,7 @@ def find_multiple_routes(graph, start_id, end_id, num_routes=3):
     routes = []
     excluded_paths = []
 
+    # 
     for _ in range(num_routes):
         path = dijkstra_with_exclusions(excluded_paths)
         if not path or path in routes:
