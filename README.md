@@ -3,14 +3,14 @@ Todo:
 
 1. Algorithms:
 
-   - Advanced Graph Algorithm:
-     - change algo to A\* or yen
-       - find difference between the two and which is more efficient
-   - Data Structures:
-     - check if we use advanced data structures such as heaps for managing distances, or disjoint set unions for grouping airports
-     - if we dont, might have to implement it
+   ~~- Advanced Graph Algorithm:~~
+     ~~- change algo to A\* or yen~~
+       ~~- find difference between the two and which is more efficient~~
+   ~~- Data Structures:~~
+     ~~- check if we use advanced data structures such as heaps for managing distances, or disjoint set unions for grouping airports~~
+     ~~- if we dont, might have to implement it~~
    - Dynamic Programming:
-     - For multi-leg flights, consider using dynamic programming to find optimal routes considering layovers or costs
+     ~~- For multi-leg flights, consider using dynamic programming to find optimal routes considering layovers or costs~~
        - for this one we probably need to come up with how to properly calculate the cost of a path
          - **currently it is: cost is dist x 0.1 (need to find pricing)**
          - bigger plane more expensive? e.g. big plane cost > mid plane cost > small plane cost
@@ -29,7 +29,7 @@ Todo:
 3. Creativity:
    - Environmental Impact
      - feature to calculate carbon footprint of different flight routes
-   - Maybe one more idea pls help w this
+   - Sort flights by Distance, Cost, or Environmental Impact
 
 # Misc
 
