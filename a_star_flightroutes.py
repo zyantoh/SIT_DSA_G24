@@ -351,7 +351,7 @@ def update_map(routes_data):
             )
         )
 
-
+# Callback to display information on a route when route is clicked on
 @app.callback(
     Output('flight-info', 'children'),
     [Input('flight-map', 'clickData')],
