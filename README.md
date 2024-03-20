@@ -24,7 +24,5 @@ Todo:
    - Sort flights by Distance, Cost, or Environmental Impact
 
 # Misc
-
-- get rid of graph intialisation page (before keying in the data)
 - documentation
 - presentation slides
