@@ -94,8 +94,8 @@ def potential(graph, start_id, end_id):
 
 # Dijkstra's algorithm with weighted edge (A* algorithm) to find multiple paths
 # A* formula : f(n) = g(n) + h(n)
-def find_multiple_routes(graph, start_id, end_id, num_routes=3, cost_per_km=0.1):
-    def dijkstra_with_exclusions(start_id, end_id, excluded_paths):
+def find_multiple_routes(graph, start_id, end_id, num_routes=5, cost_per_km=0.1):
+    def a_star_with_exclusions(start_id, end_id, excluded_paths):
         
         #map of vertices starting with infinity value 
         distances = {airport_id: float('infinity') for airport_id in graph.airports}
@@ -156,7 +156,7 @@ def find_multiple_routes(graph, start_id, end_id, num_routes=3, cost_per_km=0.1)
             current_vertex = previous[current_vertex] #!!!ERROR!!!
 
         return path if path[0] == start_id else []
-        #---end of dijkstra_with_exclusions function---
+        #---end of a_star_with_exclusions function---
     
     #---------------------------------------------------------
     routes_info = []
@@ -164,7 +164,7 @@ def find_multiple_routes(graph, start_id, end_id, num_routes=3, cost_per_km=0.1)
 
     #search route based on the number of times
     for _ in range(num_routes):
-        path = dijkstra_with_exclusions(start_id, end_id, excluded_paths)
+        path = a_star_with_exclusions(start_id, end_id, excluded_paths)
         if not path or any(path == route_info['route'] for route_info in routes_info):
             break  # Stop if no path found or if the path is already included
 
