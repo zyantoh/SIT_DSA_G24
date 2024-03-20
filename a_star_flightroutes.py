@@ -6,8 +6,6 @@ import plotly.graph_objs as go
 from math import radians, cos, sin, asin, sqrt
 
 # Define the Airport, Route, and Graph classes
-
-
 class Airport:
     def __init__(self, airportid, name, city, country, iata, icao, latitude, longitude, altitude, timezone, dst, tz_database_timezone, type, source):
         self.airportid = airportid  # Ensure this matches the CSV header for airport ID
@@ -58,8 +56,6 @@ class Graph:
                 route.destinationAirportID)
 
 # Load data function
-
-
 def load_data(graph, airports_filename, routes_filename):
     with open(airports_filename, 'r', encoding='utf-8') as airports_file:
         csv_reader = csv.DictReader(airports_file)
@@ -95,8 +91,6 @@ def estimate_cost(distance, cost_per_km=0.1):
 
 # dist_start_to_end for a* algo.
 # potential = heuristic estimate of distance (air distance)
-
-
 def potential(graph, start_id, end_id):
     return haversine(graph.airports[start_id].latitude,
                      graph.airports[start_id].longitude,
@@ -215,8 +209,6 @@ graph = Graph()
 load_data(graph, 'airports.csv', 'routes.csv')
 
 # Function to generate the figure with all routes
-
-
 def plot_routes(graph, route_infos):
     fig = go.Figure()
 
@@ -331,8 +323,6 @@ def update_stored_routes(n_clicks, start_iata, end_iata):
     return []
 
 # Callback to update the map based on the routes data stored
-
-
 @app.callback(
     Output('flight-map', 'figure'),
     [Input('stored-routes', 'data')]
