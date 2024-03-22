@@ -292,6 +292,16 @@ app.layout = html.Div([
               placeholder='Enter destination IATA code'),
     html.Button('Find Routes', id='find-routes', n_clicks=0),
     dcc.Store(id='stored-routes'),  # Store component for the routes
+    # dropdown for sorting of routes
+    html.Div([
+    html.Label('Sort Routes By: '),
+    dcc.Dropdown(
+        id='sort-by-dropdown',
+        options=['Distance', 'Cost', 'Environmental Impact'],
+        placeholder='Distance'
+    ),
+    ]),
+    
     # Adjust 'height' as desired
     dcc.Graph(id='flight-map', style={
         'height': '90vh',
@@ -301,7 +311,7 @@ app.layout = html.Div([
         'right': '0px',  # Adjusts the position to the right
         'top': '30vh',  # Adjusts the position from the top
         'margin-right': '20px',  # Adjusts the margin from the right
-    })
+    }),
 ])
 
 
@@ -402,6 +412,43 @@ def display_click_data(clickData, routes_data):
             return html.Div(info, style={'white-space': 'pre-line'})
     return "Click on a route to see detailed information."
 
+# Callback to sort routes based on the factors available (WIP)
+@app.callback(
+    Output('stored-routes', 'data', allow_duplicate=True),
+    Input('sort-by-dropdown','value'),
+    Input('stored-routes', 'data'),
+    prevent_initial_call = True # dont callback if dropdown is not touched at the start
+)
+def sort_routes(chosen_value, routes_data):
+
+    # choose sorting factor according to dropdown selection first
+    if chosen_value == 'Distance':
+        sort_factor = 'distance'
+    elif chosen_value == 'Cost':
+        sort_factor = 'cost'
+    else:
+        return []
+
+    def partition(routes_data, sort_factor):
+        pivot = routes_data[0]
+        size = len(routes_data)
+        pivotIndex = 0
+        for index in range(1, size):
+            if routes_data[index][sort_factor] < pivot[sort_factor]:
+                pivotIndex += 1
+                routes_data[pivotIndex], routes_data[index] = \
+                    routes_data[index], routes_data[pivotIndex]
+        return pivotIndex
+
+    def quickSort(routes_data):
+        size = len(routes_data)
+        if size > 1:
+            pivotIndex = partition(routes_data, sort_factor)
+            routes_data[0:pivotIndex] = quickSort(routes_data[0:pivotIndex])
+            routes_data[pivotIndex+1:size] = quickSort(routes_data[pivotIndex+1:size])
+        return routes_data
+
+    return quickSort(routes_data)
 
 if __name__ == '__main__':
     app.run_server(debug=True)
