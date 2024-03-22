@@ -14,15 +14,20 @@ class Airport:
         self.country = country
         self.iata = iata
         self.icao = icao
-        self.latitude = float(latitude)
-        self.longitude = float(longitude)
-        self.altitude = int(altitude)
+        # self.latitude = float(latitude)
+        # self.longitude = float(longitude)
+        # self.altitude = int(altitude)
         self.timezone = timezone
         self.dst = dst
         self.tz_database_timezone = tz_database_timezone
         self.type = type
         self.source = source
-
+        try:
+            self.latitude = float(latitude)
+            self.longitude = float(longitude)
+            self.altitude = int(altitude)
+        except ValueError:
+            print(f"Invalid data format in airport: {name}, ID: {airportid}")
 
 class Route:
     def __init__(self, airline, airlineID, sourceAirport, sourceAirportID, destinationAirport, destinationAirportID, codeshare, stops, equipment):
@@ -51,39 +56,75 @@ class Graph:
             self.adjacency_list[airport.airportid] = []
 
     def add_route(self, route):
+        if route.sourceAirportID not in self.airports or route.destinationAirportID not in self.airports:
+            print(f"Invalid route: {route.sourceAirportID} to {route.destinationAirportID}")
+            return
         if route.sourceAirportID in self.airports and route.destinationAirportID in self.airports:
             self.adjacency_list[route.sourceAirportID].append(
                 route.destinationAirportID)
 
 # Load data function
 def load_data(graph, airports_filename, routes_filename):
-    with open(airports_filename, 'r', encoding='utf-8') as airports_file:
-        csv_reader = csv.DictReader(airports_file)
-        for row in csv_reader:
-            airport = Airport(**row)
-            graph.add_airport(airport)
+    # Exception handling for reading airport data
+    try:
+        with open(airports_filename, 'r', encoding='utf-8') as airports_file:
+            csv_reader = csv.DictReader(airports_file)
+            for row in csv_reader:
+                try:
+                    airport = Airport(**row)
+                    graph.add_airport(airport)
+                except ValueError as e:
+                    print(f"Data conversion error in airports data: {e}")
+                except Exception as e:
+                    print(f"Unexpected error in airports data: {e}")
+    except FileNotFoundError:
+        print(f"Airport file not found: {airports_filename}")
+    except csv.Error as e:
+        print(f"Error reading airports CSV file: {e}")
+    except Exception as e:
+        print(f"Unexpected error when loading airports: {e}")
 
-    with open(routes_filename, 'r', encoding='utf-8') as routes_file:
-        csv_reader = csv.DictReader(routes_file)
-        for row in csv_reader:
-            route = Route(**row)
-            graph.add_route(route)
+    # Exception handling for reading route data
+    try:
+        with open(routes_filename, 'r', encoding='utf-8') as routes_file:
+            csv_reader = csv.DictReader(routes_file)
+            for row in csv_reader:
+                try:
+                    route = Route(**row)
+                    graph.add_route(route)
+                except ValueError as e:
+                    print(f"Data conversion error in routes data: {e}")
+                except Exception as e:
+                    print(f"Unexpected error in routes data: {e}")
+    except FileNotFoundError:
+        print(f"Route file not found: {routes_filename}")
+    except csv.Error as e:
+        print(f"Error reading routes CSV file: {e}")
+    except Exception as e:
+        print(f"Unexpected error when loading routes: {e}")
+
 
 
 def haversine(lat1, lon1, lat2, lon2):
     # Haversine formula to calculate distance between two points on the surface of the sphere
     # Calculate the great circle distance in kilometers between two points on the earth specified in decimal degrees.
     # Convert decimal degrees to radians
-    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+    try:
+        lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
 
-    # Haversine formula
-    dlon = lon2 - lon1
-    dlat = lat2 - lat1
-    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-    c = 2 * asin(sqrt(a))
-    r = 6371  # Radius of Earth in kilometers
-    return c * r
-
+        # Haversine formula
+        dlon = lon2 - lon1
+        dlat = lat2 - lat1
+        a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+        c = 2 * asin(sqrt(a))
+        r = 6371  # Radius of Earth in kilometers
+        return c * r
+    except ValueError as e:
+        print(f"Invalid input values for haversine calculation: {e}")
+        return 0  # or an appropriate default value
+    except Exception as e:
+        print(f"Unexpected error in haversine calculation: {e}")
+        return 0
 
 def estimate_cost(distance, cost_per_km=0.1):
     # Estimate the cost of a flight given the distance.
@@ -293,57 +334,67 @@ app.layout = html.Div([
     html.Button('Find Routes', id='find-routes', n_clicks=0),
     dcc.Store(id='stored-routes'),  # Store component for the routes
     # dropdown for sorting of routes
-    html.Div([
+    html.Div(id='flight-info'),  # Ensure this exists in your layout
+    html.Div([  
     html.Label('Sort Routes By: '),
     dcc.Dropdown(
         id='sort-by-dropdown',
-        options=['Distance', 'Cost', 'Environmental Impact'],
-        placeholder='Distance'
+        options=[
+            {'label': 'Distance', 'value': 'Distance'},
+            {'label': 'Cost', 'value': 'Cost'},
+            {'label': 'Environmental Impact', 'value': 'Environmental Impact'}
+        ],
+        value='Distance',  # Set default value to 'Distance'
+        placeholder='Select a criterion'
     ),
+    html.Div(id='error-message', style={'color': 'red'}),
     ]),
     
     # Adjust 'height' as desired
-    dcc.Graph(id='flight-map', style={
-        'height': '90vh',
-    }),
-    html.Div(id='flight-info', style={
-        'position': 'absolute',
-        'right': '0px',  # Adjusts the position to the right
-        'top': '30vh',  # Adjusts the position from the top
-        'margin-right': '20px',  # Adjusts the margin from the right
-    }),
+    dcc.Graph(id='flight-map', style={'height': '90vh'}),
+    html.Div(id='route-instructions', style={'margin-top': '10px'})
 ])
 
 
 # Callback to store the routes data
 @app.callback(
-    Output('stored-routes', 'data'),
+    [Output('stored-routes', 'data'),
+     Output('error-message', 'children')],
     [Input('find-routes', 'n_clicks')],
     [State('start-iata', 'value'), State('end-iata', 'value')]
 )
 def update_stored_routes(n_clicks, start_iata, end_iata):
     if n_clicks > 0:
-        start_id = next((airport.airportid for airport in graph.airports.values(
-        ) if airport.iata == start_iata), None)
-        end_id = next((airport.airportid for airport in graph.airports.values(
-        ) if airport.iata == end_iata), None)
-        if start_id and end_id:
-            routes = find_multiple_routes(graph, start_id, end_id)
-            return routes
-    return []
+        if start_iata and end_iata:  # Validate IATA codes are entered
+            start_id = next((airport.airportid for airport in graph.airports.values() 
+                             if airport.iata == start_iata), None)
+            end_id = next((airport.airportid for airport in graph.airports.values() 
+                           if airport.iata == end_iata), None)
+            if start_id and end_id:
+                routes = find_multiple_routes(graph, start_id, end_id)
+                return routes, ''  # No error message
+            else:
+                # Return a message for invalid IATA codes
+                return [], 'Invalid IATA codes entered.'
+        else:
+            return [], 'Please enter both start and destination IATA codes.'
+    return [], ''  # Default return if n_clicks is 0 or less
+
 
 # Callback to update the map based on the routes data stored
 @app.callback(
-    Output('flight-map', 'figure'),
+    [Output('flight-map', 'figure'),
+     Output('route-instructions', 'children')],
     [Input('stored-routes', 'data')]
 )
 def update_map(routes_data):
+    print("update_map called")  # Debug print statement
     if routes_data:
         figure = plot_routes(graph, routes_data)
-        return figure
+        instructions = "Click on a route to see detailed information."
+        return figure, instructions
     else:
-        # Return a blank figure or figure with a default globe setup
-        return go.Figure(
+        blank_figure = go.Figure(
             data=[go.Scattergeo()],
             layout=go.Layout(
                 title='No routes to display',
@@ -360,6 +411,7 @@ def update_map(routes_data):
                 )
             )
         )
+        return blank_figure, "No routes to display"
 
 # Callback to display information on a route when route is clicked on
 @app.callback(
@@ -410,7 +462,7 @@ def display_click_data(clickData, routes_data):
             info.append(html.Div(f"Estimated Cost: ${route_info['cost']:.2f}"))
 
             return html.Div(info, style={'white-space': 'pre-line'})
-    return "Click on a route to see detailed information."
+    return []#"Click on a route to see detailed information."
 
 # Callback to sort routes based on the factors available (WIP)
 @app.callback(
@@ -451,4 +503,8 @@ def sort_routes(chosen_value, routes_data):
     return quickSort(routes_data)
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    try:
+        app.run_server(debug=True)
+    except Exception as e:
+        print(f"Failed to start Dash app: {e}")
+
