@@ -14,9 +14,6 @@ class Airport:
         self.country = country
         self.iata = iata
         self.icao = icao
-        # self.latitude = float(latitude)
-        # self.longitude = float(longitude)
-        # self.altitude = int(altitude)
         self.timezone = timezone
         self.dst = dst
         self.tz_database_timezone = tz_database_timezone
@@ -57,7 +54,6 @@ class Graph:
 
     def add_route(self, route):
         if route.sourceAirportID not in self.airports or route.destinationAirportID not in self.airports:
-            print(f"Invalid route: {route.sourceAirportID} to {route.destinationAirportID}")
             return
         if route.sourceAirportID in self.airports and route.destinationAirportID in self.airports:
             self.adjacency_list[route.sourceAirportID].append(
