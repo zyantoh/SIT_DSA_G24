@@ -12,8 +12,8 @@ Todo:
 
 2. Feaures:
 
-   - Implement comprehensive error handling.
-     - e.g. no routes found, etc.
+   ~~- Implement comprehensive error handling.~~
+     ~~- e.g. no routes found, etc.~~
    - Feedback mechanisms
      - provide clear user feedback for actions like successful operations
        - e.g. x number of routes found, etc.
@@ -22,6 +22,7 @@ Todo:
    - Environmental Impact
      - feature to calculate carbon footprint of different flight routes
    - Sort flights by Distance, Cost, or Environmental Impact
+      - waiting for cost update and environmental impact update   
 
 # Misc
 - documentation
