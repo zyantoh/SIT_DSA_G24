@@ -453,9 +453,11 @@ def update_map(routes_data):
 
 # Callback to display information on a route when route is clicked on
 @app.callback(
-    Output('flight-info', 'children'),
+    [Output('flight-info', 'children'),
+    Output('route-instructions', 'children', allow_duplicate=True)],
     [Input('flight-map', 'clickData')],
-    [State('stored-routes', 'data')]
+    [State('stored-routes', 'data')],
+    prevent_initial_call=True
 )
 def display_click_data(clickData, routes_data):
     if clickData:
@@ -501,7 +503,7 @@ def display_click_data(clickData, routes_data):
             info.append(html.Div(f"Estimated Cost: ${route_info['cost']:.2f}"))
 
             print("info displayed")
-            return html.Div(info, style={'white-space': 'pre-line'})
+            return html.Div(info, style={'white-space': 'pre-line'}), ""
         
     return []
 
