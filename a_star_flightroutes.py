@@ -6,6 +6,8 @@ import plotly.graph_objs as go
 from math import radians, cos, sin, asin, sqrt
 
 # Define the Airport, Route, and Graph classes
+
+
 class Airport:
     def __init__(self, airportid, name, city, country, iata, icao, latitude, longitude, altitude, timezone, dst, tz_database_timezone, type, source):
         self.airportid = airportid  # Ensure this matches the CSV header for airport ID
@@ -25,6 +27,7 @@ class Airport:
             self.altitude = int(altitude)
         except ValueError:
             print(f"Invalid data format in airport: {name}, ID: {airportid}")
+
 
 class Route:
     def __init__(self, airline, airlineID, sourceAirport, sourceAirportID, destinationAirport, destinationAirportID, codeshare, stops, equipment):
@@ -60,6 +63,8 @@ class Graph:
                 route.destinationAirportID)
 
 # Load data function
+
+
 def load_data(graph, airports_filename, routes_filename):
     # Exception handling for reading airport data
     try:
@@ -100,7 +105,6 @@ def load_data(graph, airports_filename, routes_filename):
         print(f"Unexpected error when loading routes: {e}")
 
 
-
 def haversine(lat1, lon1, lat2, lon2):
     # Haversine formula to calculate distance between two points on the surface of the sphere
     # Calculate the great circle distance in kilometers between two points on the earth specified in decimal degrees.
@@ -122,12 +126,15 @@ def haversine(lat1, lon1, lat2, lon2):
         print(f"Unexpected error in haversine calculation: {e}")
         return 0
 
+
 def estimate_cost(distance, cost_per_km=0.1):
     # Estimate the cost of a flight given the distance.
     return distance * cost_per_km
 
 # dist_start_to_end for a* algo.
 # potential = heuristic estimate of distance (air distance)
+
+
 def potential(graph, start_id, end_id):
     return haversine(graph.airports[start_id].latitude,
                      graph.airports[start_id].longitude,
@@ -323,32 +330,67 @@ def plot_routes(graph, route_infos):
 
 # Define the layout of the app
 app.layout = html.Div([
-    dcc.Input(id='start-iata', type='text',
-              placeholder='Enter start IATA code'),
-    dcc.Input(id='end-iata', type='text',
-              placeholder='Enter destination IATA code'),
-    html.Button('Find Routes', id='find-routes', n_clicks=0),
+    html.Div([
+        dcc.Input(
+            id='start-iata',
+            type='text',
+            placeholder='Enter start IATA code',
+            style={'marginRight': '10px', 'width': '20%', 'height': '36px',
+                   'padding': '0 12px'}  # Adjust marginRight as needed
+        ),
+
+        dcc.Input(
+            id='end-iata',
+            type='text',
+            placeholder='Enter destination IATA code',
+            style={'marginRight': '10px', 'width': '20%', 'height': '36px',
+                   'padding': '0 12px'}  # Adjust marginRight as needed
+        ),
+        html.Button(
+            'Find Routes',
+            id='find-routes',
+            n_clicks=0,
+            # Adjust marginRight as needed
+            style={'marginRight': '10px', 'height': '36px',
+                   'background-color': "rgb(51,117,229)",
+                   "color": "white"}
+        ),
+        html.Label('Sort Routes By: '),
+        dcc.Dropdown(
+            id='sort-by-dropdown',
+            options=[
+                {'label': 'Distance', 'value': 'Distance'},
+                {'label': 'Cost', 'value': 'Cost'},
+                {'label': 'Environmental Impact', 'value': 'Environmental Impact'}
+            ],
+            value='Distance',  # Set default value to 'Distance'
+            placeholder='Sort routes by',
+            # Ensure this is the same width as the input boxes
+            style={'width': '40%', 'padding-left': '20px'}
+        ),
+    ], style={'display': 'flex', 'alignItems': 'center'}),
     dcc.Store(id='stored-routes'),  # Store component for the routes
-    # dropdown for sorting of routes
-    html.Div(id='flight-info'),  # Ensure this exists in your layout
-    html.Div([  
-    html.Label('Sort Routes By: '),
-    dcc.Dropdown(
-        id='sort-by-dropdown',
-        options=[
-            {'label': 'Distance', 'value': 'Distance'},
-            {'label': 'Cost', 'value': 'Cost'},
-            {'label': 'Environmental Impact', 'value': 'Environmental Impact'}
-        ],
-        value='Distance',  # Set default value to 'Distance'
-        placeholder='Select a criterion'
-    ),
+
+    # flight map
+    dcc.Graph(id='flight-map', style={'height': '90vh'}), # Adjust 'height' as desired
+
+    # listed routes and instructions beside flight map
+    html.Div(id='route-instructions', style={
+        'position': 'absolute',
+        'right': '0px',  # Adjusts the position to the right
+        'top': '30vh',  # Adjusts the position from the top
+        'margin-right': '20px',  # Adjusts the margin from the right
+    }),
+
+    # flight info right under instructions
+    html.Div(id='flight-info', style={
+        'hidden': 'true',
+        'position': 'absolute',
+        'right': '0px',  # Adjusts the position to the right
+        'top': '35vh',  # Adjusts the position from the top
+        'margin-right': '20px',  # Adjusts the margin from the right
+    }),
     html.Div(id='error-message', style={'color': 'red'}),
-    ]),
-    
-    # Adjust 'height' as desired
-    dcc.Graph(id='flight-map', style={'height': '90vh'}),
-    html.Div(id='route-instructions', style={'margin-top': '10px'})
 ])
 
 
@@ -362,9 +404,9 @@ app.layout = html.Div([
 def update_stored_routes(n_clicks, start_iata, end_iata):
     if n_clicks > 0:
         if start_iata and end_iata:  # Validate IATA codes are entered
-            start_id = next((airport.airportid for airport in graph.airports.values() 
+            start_id = next((airport.airportid for airport in graph.airports.values()
                              if airport.iata == start_iata), None)
-            end_id = next((airport.airportid for airport in graph.airports.values() 
+            end_id = next((airport.airportid for airport in graph.airports.values()
                            if airport.iata == end_iata), None)
             if start_id and end_id:
                 routes = find_multiple_routes(graph, start_id, end_id)
@@ -393,7 +435,7 @@ def update_map(routes_data):
         blank_figure = go.Figure(
             data=[go.Scattergeo()],
             layout=go.Layout(
-                title='No routes to display',
+                title='No routes to display!',
                 geo=dict(
                     showland=True,
                     landcolor='rgb(243, 243, 243)',
@@ -418,6 +460,7 @@ def update_map(routes_data):
 def display_click_data(clickData, routes_data):
     if clickData:
         points = clickData.get('points', [])
+        print("clicked")
         if points:
             # assuming curveNumber is used to index the routes
             route_index = points[0]['curveNumber']
@@ -457,26 +500,39 @@ def display_click_data(clickData, routes_data):
                 html.Div(f"Total Distance: {route_info['distance']:.2f} km"))
             info.append(html.Div(f"Estimated Cost: ${route_info['cost']:.2f}"))
 
+            print("info displayed")
             return html.Div(info, style={'white-space': 'pre-line'})
-    return []#"Click on a route to see detailed information."
+        
+    return []
 
 # Callback to sort routes based on the factors available (WIP)
 @app.callback(
     Output('stored-routes', 'data', allow_duplicate=True),
-    Input('sort-by-dropdown','value'),
+    Input('sort-by-dropdown', 'value'),
     Input('stored-routes', 'data'),
-    prevent_initial_call = True # dont callback if dropdown is not touched at the start
+    prevent_initial_call=True  # dont callback if dropdown is not touched at the start
 )
 def sort_routes(chosen_value, routes_data):
 
-    # choose sorting factor according to dropdown selection first
+    # choose sorting factor according to dropdown selection first (Enviro. impact yet to be added)
     if chosen_value == 'Distance':
         sort_factor = 'distance'
     elif chosen_value == 'Cost':
         sort_factor = 'cost'
     else:
         return []
+    
+    # quicksort: recursively sorts routes based on selected factor
+    def quickSort(routes_data):
+        size = len(routes_data)
+        if size > 1:
+            pivotIndex = partition(routes_data, sort_factor)
+            routes_data[0:pivotIndex] = quickSort(routes_data[0:pivotIndex])
+            routes_data[pivotIndex +
+                        1:size] = quickSort(routes_data[pivotIndex+1:size])
+        return routes_data
 
+    # helper function for quicksort
     def partition(routes_data, sort_factor):
         pivot = routes_data[0]
         size = len(routes_data)
@@ -488,19 +544,11 @@ def sort_routes(chosen_value, routes_data):
                     routes_data[index], routes_data[pivotIndex]
         return pivotIndex
 
-    def quickSort(routes_data):
-        size = len(routes_data)
-        if size > 1:
-            pivotIndex = partition(routes_data, sort_factor)
-            routes_data[0:pivotIndex] = quickSort(routes_data[0:pivotIndex])
-            routes_data[pivotIndex+1:size] = quickSort(routes_data[pivotIndex+1:size])
-        return routes_data
-
     return quickSort(routes_data)
 
+# Initiate Dash app and run server
 if __name__ == '__main__':
     try:
         app.run_server(debug=True)
     except Exception as e:
         print(f"Failed to start Dash app: {e}")
-
