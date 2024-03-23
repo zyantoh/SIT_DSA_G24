@@ -253,6 +253,8 @@ graph = Graph()
 load_data(graph, 'airports.csv', 'routes.csv')
 
 # Function to generate the figure with all routes
+
+
 def plot_routes(graph, route_infos):
     fig = go.Figure()
 
@@ -310,8 +312,10 @@ def plot_routes(graph, route_infos):
         countrycolor='rgb(204, 204, 204)',
         projection_rotation=dict(lon=start_lon, lat=start_lat)
     )
+    title_text = f"{len(route_infos)} Flight Route{'s' if len(route_infos) != 1 else ''} Found"
+
     fig.update_layout(
-        title='Flight Routes',
+        title=title_text,
         showlegend=True,
         geo=dict(
             scope="world",
@@ -372,7 +376,8 @@ app.layout = html.Div([
     dcc.Store(id='stored-routes'),  # Store component for the routes
 
     # flight map
-    dcc.Graph(id='flight-map', style={'height': '90vh'}), # Adjust 'height' as desired
+    # Adjust 'height' as desired
+    dcc.Graph(id='flight-map', style={'height': '90vh'}),
 
     # listed routes and instructions beside flight map
     html.Div(id='route-instructions', style={
@@ -435,7 +440,7 @@ def update_map(routes_data):
         blank_figure = go.Figure(
             data=[go.Scattergeo()],
             layout=go.Layout(
-                title='No routes to display!',
+                title='Enter Airport Codes to find routes.',
                 geo=dict(
                     showland=True,
                     landcolor='rgb(243, 243, 243)',
@@ -449,12 +454,14 @@ def update_map(routes_data):
                 )
             )
         )
-        return blank_figure, "No routes to display"
+        return blank_figure, ""
 
 # Callback to display information on a route when route is clicked on
+
+
 @app.callback(
     [Output('flight-info', 'children'),
-    Output('route-instructions', 'children', allow_duplicate=True)],
+     Output('route-instructions', 'children', allow_duplicate=True)],
     [Input('flight-map', 'clickData')],
     [State('stored-routes', 'data')],
     prevent_initial_call=True
@@ -504,10 +511,12 @@ def display_click_data(clickData, routes_data):
 
             print("info displayed")
             return html.Div(info, style={'white-space': 'pre-line'}), ""
-        
+
     return []
 
 # Callback to sort routes based on the factors available (WIP)
+
+
 @app.callback(
     Output('stored-routes', 'data', allow_duplicate=True),
     Input('sort-by-dropdown', 'value'),
@@ -523,7 +532,7 @@ def sort_routes(chosen_value, routes_data):
         sort_factor = 'cost'
     else:
         return []
-    
+
     # quicksort: recursively sorts routes based on selected factor
     def quickSort(routes_data):
         size = len(routes_data)
@@ -547,6 +556,7 @@ def sort_routes(chosen_value, routes_data):
         return pivotIndex
 
     return quickSort(routes_data)
+
 
 # Initiate Dash app and run server
 if __name__ == '__main__':
