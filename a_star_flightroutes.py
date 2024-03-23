@@ -259,8 +259,14 @@ def plot_routes(graph, route_infos):
     fig = go.Figure()
 
     # Define a list of colors for the routes
-    colors = ['red', 'blue', 'green', 'purple',
-              'orange', 'yellow', 'pink', 'cyan']
+    colors = ['#B22222',  # Firebrick
+              '#00008B',  # DarkBlue
+              '#006400',  # DarkGreen
+              '#4B0082',  # Indigo
+              '#FF8C00',  # DarkOrange
+              '#8B0000',  # DarkRed
+              '#800080',  # Purple
+              '#2F4F4F']  # DarkSlateGray
 
     for route_index, route_info in enumerate(route_infos, start=1):
         route = route_info['route']
