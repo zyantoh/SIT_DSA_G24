@@ -253,8 +253,6 @@ graph = Graph()
 load_data(graph, 'airports.csv', 'routes.csv')
 
 # Function to generate the figure with all routes
-
-
 def plot_routes(graph, route_infos):
     fig = go.Figure()
 
@@ -372,23 +370,27 @@ app.layout = html.Div([
         ),
     ], style={'display': 'flex', 'alignItems': 'center'}),
     dcc.Store(id='stored-routes'),  # Store component for the routes
-    html.Div(id='flight-info', style={
-        'hidden': 'true',
-        'position': 'absolute',
-        'right': '0px',  # Adjusts the position to the right
-        'top': '30vh',  # Adjusts the position from the top
-        'margin-right': '20px',  # Adjusts the margin from the right
-    }),
-    html.Div(id='error-message', style={'color': 'red'}),
 
-    # Adjust 'height' as desired
-    dcc.Graph(id='flight-map', style={'height': '90vh'}),
+    # flight map
+    dcc.Graph(id='flight-map', style={'height': '90vh'}), # Adjust 'height' as desired
+
+    # listed routes and instructions beside flight map
     html.Div(id='route-instructions', style={
         'position': 'absolute',
         'right': '0px',  # Adjusts the position to the right
         'top': '30vh',  # Adjusts the position from the top
         'margin-right': '20px',  # Adjusts the margin from the right
-    })
+    }),
+
+    # flight info right under instructions
+    html.Div(id='flight-info', style={
+        'hidden': 'true',
+        'position': 'absolute',
+        'right': '0px',  # Adjusts the position to the right
+        'top': '35vh',  # Adjusts the position from the top
+        'margin-right': '20px',  # Adjusts the margin from the right
+    }),
+    html.Div(id='error-message', style={'color': 'red'}),
 ])
 
 
@@ -433,7 +435,7 @@ def update_map(routes_data):
         blank_figure = go.Figure(
             data=[go.Scattergeo()],
             layout=go.Layout(
-                title='No routes to display',
+                title='No routes to display!',
                 geo=dict(
                     showland=True,
                     landcolor='rgb(243, 243, 243)',
@@ -450,8 +452,6 @@ def update_map(routes_data):
         return blank_figure, "No routes to display"
 
 # Callback to display information on a route when route is clicked on
-
-
 @app.callback(
     Output('flight-info', 'children'),
     [Input('flight-map', 'clickData')],
@@ -460,6 +460,7 @@ def update_map(routes_data):
 def display_click_data(clickData, routes_data):
     if clickData:
         points = clickData.get('points', [])
+        print("clicked")
         if points:
             # assuming curveNumber is used to index the routes
             route_index = points[0]['curveNumber']
@@ -499,12 +500,12 @@ def display_click_data(clickData, routes_data):
                 html.Div(f"Total Distance: {route_info['distance']:.2f} km"))
             info.append(html.Div(f"Estimated Cost: ${route_info['cost']:.2f}"))
 
+            print("info displayed")
             return html.Div(info, style={'white-space': 'pre-line'})
-    return []  # "Click on a route to see detailed information."
+        
+    return []
 
 # Callback to sort routes based on the factors available (WIP)
-
-
 @app.callback(
     Output('stored-routes', 'data', allow_duplicate=True),
     Input('sort-by-dropdown', 'value'),
@@ -513,14 +514,25 @@ def display_click_data(clickData, routes_data):
 )
 def sort_routes(chosen_value, routes_data):
 
-    # choose sorting factor according to dropdown selection first
+    # choose sorting factor according to dropdown selection first (Enviro. impact yet to be added)
     if chosen_value == 'Distance':
         sort_factor = 'distance'
     elif chosen_value == 'Cost':
         sort_factor = 'cost'
     else:
         return []
+    
+    # quicksort: recursively sorts routes based on selected factor
+    def quickSort(routes_data):
+        size = len(routes_data)
+        if size > 1:
+            pivotIndex = partition(routes_data, sort_factor)
+            routes_data[0:pivotIndex] = quickSort(routes_data[0:pivotIndex])
+            routes_data[pivotIndex +
+                        1:size] = quickSort(routes_data[pivotIndex+1:size])
+        return routes_data
 
+    # helper function for quicksort
     def partition(routes_data, sort_factor):
         pivot = routes_data[0]
         size = len(routes_data)
@@ -532,18 +544,9 @@ def sort_routes(chosen_value, routes_data):
                     routes_data[index], routes_data[pivotIndex]
         return pivotIndex
 
-    def quickSort(routes_data):
-        size = len(routes_data)
-        if size > 1:
-            pivotIndex = partition(routes_data, sort_factor)
-            routes_data[0:pivotIndex] = quickSort(routes_data[0:pivotIndex])
-            routes_data[pivotIndex +
-                        1:size] = quickSort(routes_data[pivotIndex+1:size])
-        return routes_data
-
     return quickSort(routes_data)
 
-
+# Initiate Dash app and run server
 if __name__ == '__main__':
     try:
         app.run_server(debug=True)
