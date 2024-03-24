@@ -373,7 +373,7 @@ app.layout = html.Div([
                 {'label': 'Cost', 'value': 'Cost'},
                 {'label': 'Environmental Impact', 'value': 'Environmental Impact'}
             ],
-            value='Distance',  # Set default value to 'Distance'
+            value='',  # Set default value to 'Distance'
             placeholder='Sort routes by',
             # Ensure this is the same width as the input boxes
             style={'width': '40%', 'padding-left': '20px'}
@@ -463,8 +463,6 @@ def update_map(routes_data):
         return blank_figure, ""
 
 # Callback to display information on a route when route is clicked on
-
-
 @app.callback(
     [Output('flight-info', 'children'),
      Output('route-instructions', 'children', allow_duplicate=True)],
@@ -537,7 +535,7 @@ def sort_routes(chosen_value, routes_data):
     elif chosen_value == 'Cost':
         sort_factor = 'cost'
     else:
-        return []
+        return routes_data
 
     # quicksort: recursively sorts routes based on selected factor
     def quickSort(routes_data):
