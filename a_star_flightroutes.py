@@ -161,11 +161,11 @@ def haversine(lat1, lon1, lat2, lon2):
         return 0
 
 
-def estimate_cost(distance, cost_per_km=0.1):
+def estimate_cost(distance, cost_per_km):
     # Estimate the cost of a flight given the distance.
     return distance * cost_per_km
 
-def estimate_co2(graph, route, default_co2_emission_per_km=150):
+def estimate_co2(graph, route, default_co2_emission_per_km):
     total_co2 = 0.0
     for i in range(len(route) - 1):
         try:
@@ -184,10 +184,6 @@ def estimate_co2(graph, route, default_co2_emission_per_km=150):
             # Change to standard CO2 emission per km if no specific data is available
             co2_emission_per_km = default_co2_emission_per_km
 
-            # If route segment, update CO2 emissions per km
-            if route_segment and route_segment.equipment in graph.co2_data:
-                co2_emission_per_km = graph.co2_data[route_segment.equipment].co2_emission_per_km
-
             # Calculate CO2 emissions
             total_co2 += distance * co2_emission_per_km
 
@@ -198,7 +194,7 @@ def estimate_co2(graph, route, default_co2_emission_per_km=150):
         except Exception as error:
             print(f"An unexpected error occurred: {error}")
 
-    return total_co2
+    return (total_co2/100)   # Return result in kg
 
 # dist_start_to_end for a* algo.
 # potential = heuristic estimate of distance (air distance)
@@ -213,7 +209,7 @@ def potential(graph, start_id, end_id):
 
 # Dijkstra's algorithm with weighted edge (A* algorithm) to find multiple paths
 # A* formula : f(n) = g(n) + h(n)
-def find_multiple_routes(graph, start_id, end_id, num_routes=5, cost_per_km=0.1):
+def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane_iata, num_routes=5):
     def a_star_with_exclusions(start_id, end_id, excluded_paths):
         try:
             # map of vertices starting with infinity value
@@ -276,7 +272,7 @@ def find_multiple_routes(graph, start_id, end_id, num_routes=5, cost_per_km=0.1)
             path, current_vertex = [], end_id
             while current_vertex is not None:
                 path.insert(0, current_vertex)
-                current_vertex = previous[current_vertex]  # !!!ERROR!!!
+                current_vertex = previous[current_vertex]  
 
             return path if path[0] == start_id else []
         except Exception as error:
@@ -303,13 +299,17 @@ def find_multiple_routes(graph, start_id, end_id, num_routes=5, cost_per_km=0.1)
             # Estimate the total cost for the route
             total_cost = estimate_cost(total_distance, cost_per_km)
             #Fix estimate total co2 emission
-            total_co2 = estimate_co2(graph, path)  # Use the entire route path and the graph
+            total_co2 = estimate_co2(graph, path, co2_per_km)  # Use the entire route path and the graph
             # Add the path, distance, and cost, co2 to the routes_info
+            plane_name = graph.co2_data[plane_iata].name
+        
             routes_info.append({
                 'route': path,
                 'distance': total_distance,
                 'cost': total_cost,
-                'environmental impact' : total_co2
+                'environmental impact' : total_co2,
+                'plane name' : plane_name,
+                'plane iata' : plane_iata
             })
 
             # Add the edges of the path to the excluded_paths to prevent reuse
@@ -520,17 +520,20 @@ app.layout = html.Div([
     [Output('stored-routes', 'data'),
      Output('error-message', 'children')],
     [Input('find-routes', 'n_clicks')],
-    [State('start-iata', 'value'), State('end-iata', 'value')]
+    [State('start-iata', 'value'), State('end-iata', 'value'), State('sort-by-plane', 'value')]
 )
-def update_stored_routes(n_clicks, start_iata, end_iata):
+def update_stored_routes(n_clicks, start_iata, end_iata, plane_iata):
     if n_clicks > 0:
-        if start_iata and end_iata:  # Validate IATA codes are entered
+        if start_iata and end_iata and plane_iata:  # Validate IATA codes are entered
+            
             start_id = next((airport.airportid for airport in graph.airports.values()
                              if airport.iata == start_iata), None)
             end_id = next((airport.airportid for airport in graph.airports.values()
                            if airport.iata == end_iata), None)
-            if start_id and end_id:
-                routes = find_multiple_routes(graph, start_id, end_id)
+            if start_id and end_id and plane_iata:
+                price = graph.co2_data[plane_iata].price_per_km
+                co2 = graph.co2_data[plane_iata].co2_emission_per_km
+                routes = find_multiple_routes(graph, start_id, end_id, price, co2, plane_iata)
                 return routes, ''
             else:
                 #message for invalid IATA codes
@@ -618,6 +621,8 @@ def display_click_data(clickData, routes_data):
             info.append(html.Br())
             info.append(html.Br())
 
+            info.append(html.Div(f"Plane Flown: {route_info['plane name']} ({route_info['plane iata']})"))
+
             # Add total distance and estimated cost
             info.append(
                 html.Div(f"Total Distance: {route_info['distance']:.2f} km"))
@@ -634,7 +639,7 @@ def display_click_data(clickData, routes_data):
 # Callback to sort routes based on the factors available (WIP)
 @app.callback(
     Output('stored-routes', 'data', allow_duplicate=True),
-    Input('sort-by-plane', 'value'),
+    #Input('sort-by-plane', 'value'),
     Input('sort-by-dropdown', 'value'),
     Input('stored-routes', 'data'),
     prevent_initial_call=True  # dont callback if dropdown is not touched at the start
