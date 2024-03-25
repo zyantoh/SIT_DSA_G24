@@ -66,6 +66,8 @@ class Graph:
 
 
 def load_data(graph, airports_filename, routes_filename):
+    # airports_file_path = '/path/to/your/airports.csv'  # Replace with your path
+    # routes_file_path = '/path/to/your/routes.csv'  # Replace with your path
     # Exception handling for reading airport data
     try:
         with open(airports_filename, 'r', encoding='utf-8') as airports_file:
@@ -379,6 +381,7 @@ app.layout = html.Div([
             style={'width': '40%', 'padding-left': '20px'}
         ),
     ], style={'display': 'flex', 'alignItems': 'center'}),
+    html.Div(id='error-message', style={'color': 'red'}),
     dcc.Store(id='stored-routes'),  # Store component for the routes
 
     # flight map
@@ -401,7 +404,6 @@ app.layout = html.Div([
         'top': '35vh',  # Adjusts the position from the top
         'margin-right': '20px',  # Adjusts the margin from the right
     }),
-    html.Div(id='error-message', style={'color': 'red'}),
 ])
 
 
