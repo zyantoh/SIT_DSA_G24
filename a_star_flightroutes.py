@@ -427,6 +427,44 @@ app.layout = html.Div([
             style={'marginRight': '10px', 'width': '20%', 'height': '36px',
                    'padding': '0 12px'}  # Adjust marginRight
         ),
+
+        html.Label('Plane: '),
+        dcc.Dropdown(
+            id='sort-by-plane',
+            options=[
+                {'label': 'Boeing 767', 'value': '767'},
+                {'label': 'Airbus A320neo', 'value': '32N'}, 
+                {'label': 'Boeing 777', 'value': '777'}, 
+                {'label': 'Boeing 747', 'value': '747'}, 
+                {'label': 'Airbus A320', 'value': '320'}, 
+                {'label': 'Airbus A319', 'value': '319'}, 
+                {'label': 'Boeing 737', 'value': '737'}, 
+                {'label': 'Airbus A318', 'value': '318'}, 
+                {'label': 'Embraer 190', 'value': 'E90'}, 
+                {'label': 'Airbus A350', 'value': '350'}, 
+                {'label': 'Airbus A330', 'value': '330'}, 
+                {'label': 'Boeing 787', 'value': '787'}, 
+                {'label': 'Airbus A321', 'value': '321'}, 
+                {'label': 'Airbus A321neo', 'value': '32Q'}, 
+                {'label': 'Airbus A380', 'value': '380'}, 
+                {'label': 'Airbus A340', 'value': '340'}, 
+                {'label': 'Boeing 787-10', 'value': '78J'}, 
+                {'label': 'Embraer 175', 'value': 'E75'}, 
+                {'label': 'Embraer 170', 'value': 'E70'}, 
+                {'label': 'Embraer 195', 'value': 'E95'}, 
+                {'label': 'Boeing 757', 'value': '757'}, 
+                {'label': 'Airbus A330-900neo', 'value': '339'}, 
+                {'label': 'Boeing 717', 'value': '717'}, 
+                {'label': 'Fokker 100', 'value': '100'}, 
+                {'label': 'Airbus A319neo', 'value': '31N'}, 
+                {'label': 'Fokker 70', 'value': 'F70'}
+            ],
+            value='', 
+            placeholder='Choose plane',
+            # Ensure this is the same width as the input boxes
+            style={'width': '30%', 'padding-left': '20px'}
+        ),
+
         html.Button(
             'Find Routes',
             id='find-routes',
@@ -596,6 +634,7 @@ def display_click_data(clickData, routes_data):
 # Callback to sort routes based on the factors available (WIP)
 @app.callback(
     Output('stored-routes', 'data', allow_duplicate=True),
+    Input('sort-by-plane', 'value'),
     Input('sort-by-dropdown', 'value'),
     Input('stored-routes', 'data'),
     prevent_initial_call=True  # dont callback if dropdown is not touched at the start
