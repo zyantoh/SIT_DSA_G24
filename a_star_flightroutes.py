@@ -54,8 +54,8 @@ class Co2:
 class Graph:
     def __init__(self):
         self.airports = {}
-        self.co2_data = {}  # New dictionary to store CO2 data
-        self.routes = {}  # New dictionary to store Route objects
+        self.co2_data = {} 
+        self.routes = {}  
         self.adjacency_list = {}
 
     def add_airport(self, airport):
@@ -81,9 +81,8 @@ class Graph:
 
 
 # Load data function
-
-
 def load_data(graph, airports_filename, routes_filename, co2_filename):
+    # Load airports data
     try:
         with open(airports_filename, 'r', encoding='utf-8') as airports_file:
             csv_reader = csv.DictReader(airports_file)
@@ -102,7 +101,7 @@ def load_data(graph, airports_filename, routes_filename, co2_filename):
     except Exception as error:
         print(f"Unexpected error when loading airports: {error}")
 
-    # Exception handling for reading route data
+    # Load route data
     try:
         with open(routes_filename, 'r', encoding='utf-8') as routes_file:
             csv_reader = csv.DictReader(routes_file)
@@ -169,34 +168,37 @@ def estimate_cost(distance, cost_per_km=0.1):
 def estimate_co2(graph, route, default_co2_emission_per_km=150):
     total_co2 = 0.0
     for i in range(len(route) - 1):
-        # Calculate the distance between each pair of airports
-        distance = haversine(
-            graph.airports[route[i]].latitude, graph.airports[route[i]].longitude,
-            graph.airports[route[i+1]].latitude, graph.airports[route[i+1]].longitude
-        )
+        try:
+            # Calculate the distance between each pair of airports
+            distance = haversine(
+                graph.airports[route[i]].latitude, graph.airports[route[i]].longitude,
+                graph.airports[route[i+1]].latitude, graph.airports[route[i+1]].longitude
+            )
 
-        # Create a unique key for the route segment
-        route_key = (route[i], route[i+1])
+            # Create a unique key for the route segment
+            route_key = (route[i], route[i+1])
 
-        # Retrieve the Route object using the route_key
-        route_segment = graph.routes.get(route_key)
+            # Retrieve the Route object using the route_key
+            route_segment = graph.routes.get(route_key)
 
-        # Continue only if route_segment is found
-        if route_segment:
-            aircraft_type = route_segment.equipment
+            # Change to standard CO2 emission per km if no specific data is available
+            co2_emission_per_km = default_co2_emission_per_km
 
-            # Get the CO2 emissions per km for the given aircraft type
-            co2_data = graph.co2_data.get(aircraft_type)
-            if co2_data:
-                co2_emission_per_km = co2_data.co2_emission_per_km
-            else:
-                co2_emission_per_km = default_co2_emission_per_km
+            # If route segment, update CO2 emissions per km
+            if route_segment and route_segment.equipment in graph.co2_data:
+                co2_emission_per_km = graph.co2_data[route_segment.equipment].co2_emission_per_km
 
-            # Calculate CO2 emissions for this segment
+            # Calculate CO2 emissions
             total_co2 += distance * co2_emission_per_km
 
-    return total_co2
+        except KeyError as error:
+            print(f"Key error occurred: {error}")
+        except ValueError as error:
+            print(f"Value error occurred: {error}")
+        except Exception as error:
+            print(f"An unexpected error occurred: {error}")
 
+    return total_co2
 
 # dist_start_to_end for a* algo.
 # potential = heuristic estimate of distance (air distance)
@@ -213,104 +215,108 @@ def potential(graph, start_id, end_id):
 # A* formula : f(n) = g(n) + h(n)
 def find_multiple_routes(graph, start_id, end_id, num_routes=5, cost_per_km=0.1):
     def a_star_with_exclusions(start_id, end_id, excluded_paths):
+        try:
+            # map of vertices starting with infinity value
+            distances = {airport_id: float('infinity')
+                        for airport_id in graph.airports}
 
-        # map of vertices starting with infinity value
-        distances = {airport_id: float('infinity')
-                     for airport_id in graph.airports}
+            # map of vertices that have been visited before
+            previous = {airport_id: None for airport_id in graph.airports}
 
-        # map of vertices that have been visited before
-        previous = {airport_id: None for airport_id in graph.airports}
+            # set starting distance to 0
+            distances[start_id] = 0
 
-        # set starting distance to 0
-        distances[start_id] = 0
+            # (current distance, current vertex)
+            pq = [(0, start_id)]
 
-        # (current distance, current vertex)
-        pq = [(0, start_id)]
+            # potential distance between start to end
+            original_potential = potential(graph, start_id, end_id)
 
-        # potential distance between start to end
-        original_potential = potential(graph, start_id, end_id)
+            while pq:
+                # first loop: current_distance = 0, current_vertex = start_id
+                current_distance, current_vertex = heapq.heappop(pq)
+                # potential of current vertex (distance from vertex to end)
+                current_vertex_potential = potential(graph, current_vertex, end_id)
 
-        while pq:
-            # first loop: current_distance = 0, current_vertex = start_id
-            current_distance, current_vertex = heapq.heappop(pq)
-            # potential of current vertex (distance from vertex to end)
-            current_vertex_potential = potential(graph, current_vertex, end_id)
+                # destination reached
+                if current_vertex == end_id:
+                    break
+                # reach out to all nearby nodes
+                for neighbor in graph.adjacency_list[current_vertex]:
+                    # number_of_adj = len(graph.adjacency_list[current_vertex])
 
-            # destination reached
-            if current_vertex == end_id:
-                break
-            # reach out to all nearby nodes
-            for neighbor in graph.adjacency_list[current_vertex]:
-                # number_of_adj = len(graph.adjacency_list[current_vertex])
+                    # potential weight from neighbour to end
+                    neighbour_vertex_potential = potential(graph, neighbor, end_id)
+                    # weight of edge between current vertex and neighbouring vertex
+                    # h(n)
+                    weight_of_edge = original_potential + \
+                        neighbour_vertex_potential - current_vertex_potential
 
-                # potential weight from neighbour to end
-                neighbour_vertex_potential = potential(graph, neighbor, end_id)
-                # weight of edge between current vertex and neighbouring vertex
-                # h(n)
-                weight_of_edge = original_potential + \
-                    neighbour_vertex_potential - current_vertex_potential
+                    if [current_vertex, neighbor] in excluded_paths:
+                        continue
 
-                if [current_vertex, neighbor] in excluded_paths:
-                    continue
+                    # distance is the distance of the neighbouring vertex
+                    # (OLD CODE) distance = current_distance + 1
+                    # g(n) = distance from start to current vertex + distance from current vertex to neighbouring vertex
+                    # distance from current vertex to neighbour vertex
+                    distance = current_distance + \
+                        potential(graph, current_vertex, neighbor)
+                    weight_of_vertex = distance + weight_of_edge
+                    # updates neighbouring vertex distance if it took a shorter distance
+                    if weight_of_vertex < distances[neighbor]:
+                        # closest distance from start
+                        distances[neighbor] = weight_of_vertex
+                        # previous vertex path taken
+                        previous[neighbor] = current_vertex
+                        heapq.heappush(pq, (weight_of_vertex, neighbor))
+                        # f(n) : weight of each vertex
 
-                # distance is the distance of the neighbouring vertex
-                # (OLD CODE) distance = current_distance + 1
-                # g(n) = distance from start to current vertex + distance from current vertex to neighbouring vertex
-                # distance from current vertex to neighbour vertex
-                distance = current_distance + \
-                    potential(graph, current_vertex, neighbor)
-                weight_of_vertex = distance + weight_of_edge
-                # updates neighbouring vertex distance if it took a shorter distance
-                if weight_of_vertex < distances[neighbor]:
-                    # closest distance from start
-                    distances[neighbor] = weight_of_vertex
-                    # previous vertex path taken
-                    previous[neighbor] = current_vertex
-                    heapq.heappush(pq, (weight_of_vertex, neighbor))
-                    # f(n) : weight of each vertex
+                        # boundary_vertices map stores weight of edge
 
-                    # boundary_vertices map stores weight of edge
+            path, current_vertex = [], end_id
+            while current_vertex is not None:
+                path.insert(0, current_vertex)
+                current_vertex = previous[current_vertex]  # !!!ERROR!!!
 
-        path, current_vertex = [], end_id
-        while current_vertex is not None:
-            path.insert(0, current_vertex)
-            current_vertex = previous[current_vertex]  # !!!ERROR!!!
-
-        return path if path[0] == start_id else []
+            return path if path[0] == start_id else []
+        except Exception as error:
+            print(f"An error occurred during route finding: {error}")
+            return []
         # ---end of a_star_with_exclusions function---
 
     # ---------------------------------------------------------
     routes_info = []
     excluded_paths = []
+    try:
+        # search route based on the number of times
+        for _ in range(num_routes):
+            path = a_star_with_exclusions(start_id, end_id, excluded_paths)
+            if not path or any(path == route_info['route'] for route_info in routes_info):
+                break  # Stop if no path found or if the path is already included
 
-    # search route based on the number of times
-    for _ in range(num_routes):
-        path = a_star_with_exclusions(start_id, end_id, excluded_paths)
-        if not path or any(path == route_info['route'] for route_info in routes_info):
-            break  # Stop if no path found or if the path is already included
+            # Calculate the total distance for the route
+            total_distance = sum(haversine(
+                graph.airports[path[i]].latitude, graph.airports[path[i]].longitude,
+                graph.airports[path[i+1]].latitude, graph.airports[path[i+1]].longitude
+            ) for i in range(len(path) - 1))
 
-        # Calculate the total distance for the route
-        total_distance = sum(haversine(
-            graph.airports[path[i]].latitude, graph.airports[path[i]].longitude,
-            graph.airports[path[i+1]].latitude, graph.airports[path[i+1]].longitude
-        ) for i in range(len(path) - 1))
+            # Estimate the total cost for the route
+            total_cost = estimate_cost(total_distance, cost_per_km)
+            #Fix estimate total co2 emission
+            total_co2 = estimate_co2(graph, path)  # Use the entire route path and the graph
+            # Add the path, distance, and cost, co2 to the routes_info
+            routes_info.append({
+                'route': path,
+                'distance': total_distance,
+                'cost': total_cost,
+                'environmental impact' : total_co2
+            })
 
-        # Estimate the total cost for the route
-        total_cost = estimate_cost(total_distance, cost_per_km)
-        #Fix estimate total co2 emission
-        total_co2 = estimate_co2(graph, path)  # Use the entire route path and the graph
-        # Add the path, distance, and cost, co2 to the routes_info
-        routes_info.append({
-            'route': path,
-            'distance': total_distance,
-            'cost': total_cost,
-            'environmental impact' : total_co2
-        })
-
-        # Add the edges of the path to the excluded_paths to prevent reuse
-        for i in range(len(path) - 1):
-            excluded_paths.append([path[i], path[i+1]])
-
+            # Add the edges of the path to the excluded_paths to prevent reuse
+            for i in range(len(path) - 1):
+                excluded_paths.append([path[i], path[i+1]])
+    except Exception as error:
+        print(f"An error occurred in find_multiple_routes: {error}")
     return routes_info
 
 
@@ -320,8 +326,6 @@ graph = Graph()
 load_data(graph, 'airports.csv', 'routes.csv', 'planes_co2_price.csv')
 
 # Function to generate the figure with all routes
-
-
 def plot_routes(graph, route_infos):
     fig = go.Figure()
 
@@ -413,7 +417,7 @@ app.layout = html.Div([
             type='text',
             placeholder='Enter start IATA code',
             style={'marginRight': '10px', 'width': '20%', 'height': '36px',
-                   'padding': '0 12px'}  # Adjust marginRight as needed
+                   'padding': '0 12px'}  # Adjust marginRight
         ),
 
         dcc.Input(
@@ -421,7 +425,7 @@ app.layout = html.Div([
             type='text',
             placeholder='Enter destination IATA code',
             style={'marginRight': '10px', 'width': '20%', 'height': '36px',
-                   'padding': '0 12px'}  # Adjust marginRight as needed
+                   'padding': '0 12px'}  # Adjust marginRight
         ),
         html.Button(
             'Find Routes',
@@ -440,7 +444,7 @@ app.layout = html.Div([
                 {'label': 'Cost', 'value': 'Cost'},
                 {'label': 'Environmental Impact', 'value': 'Environmental Impact'}
             ],
-            value='',  # Set default value to 'Distance'
+            value='', 
             placeholder='Sort routes by',
             # Ensure this is the same width as the input boxes
             style={'width': '40%', 'padding-left': '20px'}
@@ -489,13 +493,13 @@ def update_stored_routes(n_clicks, start_iata, end_iata):
                            if airport.iata == end_iata), None)
             if start_id and end_id:
                 routes = find_multiple_routes(graph, start_id, end_id)
-                return routes, ''  # No error message
+                return routes, ''
             else:
-                # Return a message for invalid IATA codes
+                #message for invalid IATA codes
                 return [], 'Invalid IATA codes entered.'
         else:
             return [], 'Please enter both start and destination IATA codes.'
-    return [], ''  # Default return if n_clicks is 0 or less
+    return [], '' 
 
 
 # Callback to update the map based on the routes data stored
@@ -587,8 +591,6 @@ def display_click_data(clickData, routes_data):
     return []
 
 # Callback to sort routes based on the factors available (WIP)
-
-
 @app.callback(
     Output('stored-routes', 'data', allow_duplicate=True),
     Input('sort-by-dropdown', 'value'),
@@ -606,34 +608,42 @@ def sort_routes(chosen_value, routes_data):
         sort_factor = 'environmental impact'
     else:
         return routes_data
+    try:
+        # quicksort: recursively sorts routes based on selected factor
+        def quickSort(routes_data):
+            size = len(routes_data)
+            if size > 1:
+                pivotIndex = partition(routes_data, sort_factor)
+                routes_data[0:pivotIndex] = quickSort(routes_data[0:pivotIndex])
+                routes_data[pivotIndex +
+                            1:size] = quickSort(routes_data[pivotIndex+1:size])
+            return routes_data
 
-    # quicksort: recursively sorts routes based on selected factor
-    def quickSort(routes_data):
-        size = len(routes_data)
-        if size > 1:
-            pivotIndex = partition(routes_data, sort_factor)
-            routes_data[0:pivotIndex] = quickSort(routes_data[0:pivotIndex])
-            routes_data[pivotIndex +
-                        1:size] = quickSort(routes_data[pivotIndex+1:size])
-        return routes_data
-
-    # helper function for quicksort
-    def partition(routes_data, sort_factor):
-        pivot = routes_data[0]
-        size = len(routes_data)
-        pivotIndex = 0
-        for index in range(1, size):
-            if routes_data[index][sort_factor] < pivot[sort_factor]:
-                pivotIndex += 1
-                routes_data[pivotIndex], routes_data[index] = \
-                    routes_data[index], routes_data[pivotIndex]
-        return pivotIndex
-    sorted_routes = quickSort(routes_data) 
-    #error handling print
-    # print("Sorted routes based on {}: {}".format(chosen_value, sorted_routes))
-    return sorted_routes
-    # return quickSort(routes_data)
-
+        # helper function for quicksort
+        def partition(routes_data, sort_factor):
+            pivot = routes_data[0]
+            size = len(routes_data)
+            pivotIndex = 0
+            for index in range(1, size):
+                if routes_data[index][sort_factor] < pivot[sort_factor]:
+                    pivotIndex += 1
+                    routes_data[pivotIndex], routes_data[index] = \
+                        routes_data[index], routes_data[pivotIndex]
+            return pivotIndex
+        sorted_routes = quickSort(routes_data) 
+        #error handling print
+        # print("Sorted routes based on {}: {}".format(chosen_value, sorted_routes))
+        return sorted_routes
+    
+    except KeyError as error:
+        print(f"Key error during sorting: {error}. Key used: {sort_factor}")
+        return [] 
+    except TypeError as error:
+        print(f"Type error during sorting: {error}")
+        return []
+    except Exception as error:
+        print(f"An unexpected error occurred during sorting: {error}")
+        return [] 
 
 # Initiate Dash app and run server
 if __name__ == '__main__':
