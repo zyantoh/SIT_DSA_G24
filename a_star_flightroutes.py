@@ -462,7 +462,7 @@ app.layout = html.Div([
             value='', 
             placeholder='Choose plane',
             # Ensure this is the same width as the input boxes
-            style={'width': '30%', 'padding-left': '20px'}
+            style={'width': '40%', 'padding-left': '20px'}
         ),
 
         html.Button(
@@ -620,9 +620,12 @@ def display_click_data(clickData, routes_data):
             )
             info.append(html.Br())
             info.append(html.Br())
-
-            info.append(html.Div(f"Plane Flown: {route_info['plane name']} ({route_info['plane iata']})"))
-
+            
+            info.append(html.Strong("Plane Flown: "))
+            info.append(f"{route_info['plane name']} ({route_info['plane iata']})")
+            info.append(html.Br())
+            info.append(html.Br())
+            
             # Add total distance and estimated cost
             info.append(
                 html.Div(f"Total Distance: {route_info['distance']:.2f} km"))
