@@ -585,6 +585,9 @@ def display_click_data(clickData, routes_data):
                 html.Div(f"Total Distance: {route_info['distance']:.2f} km"))
             info.append(html.Div(f"Estimated Cost: ${route_info['cost']:.2f}"))
 
+            # Add total CO2 emissions
+            info.append(html.Div(f"Total CO2 Emissions: {route_info['environmental impact']:.2f} kg"))
+            
             print("info displayed")
             return html.Div(info, style={'white-space': 'pre-line'}), ""
 
