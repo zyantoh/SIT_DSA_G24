@@ -42,10 +42,20 @@ class Route:
         self.stops = int(stops)
         self.equipment = equipment
 
+class Co2:
+    def __init__(self,name, equipment, icao, co2_emission_per_km, price_per_km):
+        self.name = name
+        self.equipment = equipment
+        self.icao = icao
+        self.co2_emission_per_km = float(co2_emission_per_km)
+        self.price_per_km = float(price_per_km)
+        
 
 class Graph:
     def __init__(self):
         self.airports = {}
+        self.co2_data = {}  # New dictionary to store CO2 data
+        self.routes = {}  # New dictionary to store Route objects
         self.adjacency_list = {}
 
     def add_airport(self, airport):
@@ -56,19 +66,24 @@ class Graph:
             self.adjacency_list[airport.airportid] = []
 
     def add_route(self, route):
+        # Check if airports in the route exist in the graph
         if route.sourceAirportID not in self.airports or route.destinationAirportID not in self.airports:
             return
-        if route.sourceAirportID in self.airports and route.destinationAirportID in self.airports:
-            self.adjacency_list[route.sourceAirportID].append(
-                route.destinationAirportID)
+
+        # Add the route to the adjacency list
+        if route.sourceAirportID not in self.adjacency_list:
+            self.adjacency_list[route.sourceAirportID] = []
+        self.adjacency_list[route.sourceAirportID].append(route.destinationAirportID)
+
+        # Store detailed route information
+        route_key = (route.sourceAirportID, route.destinationAirportID)
+        self.routes[route_key] = route
+
 
 # Load data function
 
 
-def load_data(graph, airports_filename, routes_filename):
-    # airports_file_path = '/path/to/your/airports.csv'  # Replace with your path
-    # routes_file_path = '/path/to/your/routes.csv'  # Replace with your path
-    # Exception handling for reading airport data
+def load_data(graph, airports_filename, routes_filename, co2_filename):
     try:
         with open(airports_filename, 'r', encoding='utf-8') as airports_file:
             csv_reader = csv.DictReader(airports_file)
@@ -76,16 +91,16 @@ def load_data(graph, airports_filename, routes_filename):
                 try:
                     airport = Airport(**row)
                     graph.add_airport(airport)
-                except ValueError as e:
-                    print(f"Data conversion error in airports data: {e}")
-                except Exception as e:
-                    print(f"Unexpected error in airports data: {e}")
+                except ValueError as error:
+                    print(f"Data conversion error in airports data: {error}")
+                except Exception as error:
+                    print(f"Unexpected error in airports data: {error}")
     except FileNotFoundError:
         print(f"Airport file not found: {airports_filename}")
-    except csv.Error as e:
-        print(f"Error reading airports CSV file: {e}")
-    except Exception as e:
-        print(f"Unexpected error when loading airports: {e}")
+    except csv.Error as error:
+        print(f"Error reading airports CSV file: {error}")
+    except Exception as error:
+        print(f"Unexpected error when loading airports: {error}")
 
     # Exception handling for reading route data
     try:
@@ -95,17 +110,35 @@ def load_data(graph, airports_filename, routes_filename):
                 try:
                     route = Route(**row)
                     graph.add_route(route)
-                except ValueError as e:
-                    print(f"Data conversion error in routes data: {e}")
-                except Exception as e:
-                    print(f"Unexpected error in routes data: {e}")
+                except ValueError as error:
+                    print(f"Data conversion error in routes data: {error}")
+                except Exception as error:
+                    print(f"Unexpected error in routes data: {error}")
     except FileNotFoundError:
         print(f"Route file not found: {routes_filename}")
-    except csv.Error as e:
-        print(f"Error reading routes CSV file: {e}")
-    except Exception as e:
-        print(f"Unexpected error when loading routes: {e}")
-
+    except csv.Error as error:
+        print(f"Error reading routes CSV file: {error}")
+    except Exception as error:
+        print(f"Unexpected error when loading routes: {error}")
+        
+    # Load CO2 data
+    try:
+        with open(co2_filename, 'r', encoding='utf-8') as co2_file:
+            csv_reader = csv.DictReader(co2_file)
+            for row in csv_reader:
+                try:
+                    co2_instance = Co2(**row)
+                    graph.co2_data[co2_instance.equipment] = co2_instance
+                except ValueError as error:
+                    print(f"Data conversion error in CO2 data: {error}")
+                except Exception as error:
+                    print(f"Unexpected error in CO2 data: {error}")
+    except FileNotFoundError:
+        print(f"CO2 data file not found: {co2_filename}")
+    except csv.Error as error:
+        print(f"Error reading CO2 data CSV file: {error}")
+    except Exception as error:
+        print(f"Unexpected error when loading CO2 data: {error}")
 
 def haversine(lat1, lon1, lat2, lon2):
     # Haversine formula to calculate distance between two points on the surface of the sphere
@@ -121,17 +154,49 @@ def haversine(lat1, lon1, lat2, lon2):
         c = 2 * asin(sqrt(a))
         r = 6371  # Radius of Earth in kilometers
         return c * r
-    except ValueError as e:
-        print(f"Invalid input values for haversine calculation: {e}")
+    except ValueError as error:
+        print(f"Invalid input values for haversine calculation: {error}")
         return 0  # or an appropriate default value
-    except Exception as e:
-        print(f"Unexpected error in haversine calculation: {e}")
+    except Exception as error:
+        print(f"Unexpected error in haversine calculation: {error}")
         return 0
 
 
 def estimate_cost(distance, cost_per_km=0.1):
     # Estimate the cost of a flight given the distance.
     return distance * cost_per_km
+
+def estimate_co2(graph, route, default_co2_emission_per_km=150):
+    total_co2 = 0.0
+    for i in range(len(route) - 1):
+        # Calculate the distance between each pair of airports
+        distance = haversine(
+            graph.airports[route[i]].latitude, graph.airports[route[i]].longitude,
+            graph.airports[route[i+1]].latitude, graph.airports[route[i+1]].longitude
+        )
+
+        # Create a unique key for the route segment
+        route_key = (route[i], route[i+1])
+
+        # Retrieve the Route object using the route_key
+        route_segment = graph.routes.get(route_key)
+
+        # Continue only if route_segment is found
+        if route_segment:
+            aircraft_type = route_segment.equipment
+
+            # Get the CO2 emissions per km for the given aircraft type
+            co2_data = graph.co2_data.get(aircraft_type)
+            if co2_data:
+                co2_emission_per_km = co2_data.co2_emission_per_km
+            else:
+                co2_emission_per_km = default_co2_emission_per_km
+
+            # Calculate CO2 emissions for this segment
+            total_co2 += distance * co2_emission_per_km
+
+    return total_co2
+
 
 # dist_start_to_end for a* algo.
 # potential = heuristic estimate of distance (air distance)
@@ -226,20 +291,20 @@ def find_multiple_routes(graph, start_id, end_id, num_routes=5, cost_per_km=0.1)
 
         # Calculate the total distance for the route
         total_distance = sum(haversine(
-            graph.airports[path[i]
-                           ].latitude, graph.airports[path[i]].longitude,
-            graph.airports[path[i+1]
-                           ].latitude, graph.airports[path[i+1]].longitude
+            graph.airports[path[i]].latitude, graph.airports[path[i]].longitude,
+            graph.airports[path[i+1]].latitude, graph.airports[path[i+1]].longitude
         ) for i in range(len(path) - 1))
 
         # Estimate the total cost for the route
         total_cost = estimate_cost(total_distance, cost_per_km)
-
-        # Add the path, distance, and cost to the routes_info
+        #Fix estimate total co2 emission
+        total_co2 = estimate_co2(graph, path)  # Use the entire route path and the graph
+        # Add the path, distance, and cost, co2 to the routes_info
         routes_info.append({
             'route': path,
             'distance': total_distance,
-            'cost': total_cost
+            'cost': total_cost,
+            'environmental impact' : total_co2
         })
 
         # Add the edges of the path to the excluded_paths to prevent reuse
@@ -252,7 +317,7 @@ def find_multiple_routes(graph, start_id, end_id, num_routes=5, cost_per_km=0.1)
 # Create the Dash app
 app = Dash(__name__)
 graph = Graph()
-load_data(graph, 'airports.csv', 'routes.csv')
+load_data(graph, 'airports.csv', 'routes.csv', 'planes_co2_price.csv')
 
 # Function to generate the figure with all routes
 
@@ -381,7 +446,6 @@ app.layout = html.Div([
             style={'width': '40%', 'padding-left': '20px'}
         ),
     ], style={'display': 'flex', 'alignItems': 'center'}),
-    html.Div(id='error-message', style={'color': 'red'}),
     dcc.Store(id='stored-routes'),  # Store component for the routes
 
     # flight map
@@ -404,6 +468,8 @@ app.layout = html.Div([
         'top': '35vh',  # Adjusts the position from the top
         'margin-right': '20px',  # Adjusts the margin from the right
     }),
+    html.Div(id='error-message', style={'color': 'red'}),
+
 ])
 
 
@@ -536,6 +602,8 @@ def sort_routes(chosen_value, routes_data):
         sort_factor = 'distance'
     elif chosen_value == 'Cost':
         sort_factor = 'cost'
+    elif chosen_value == "Environmental Impact":
+        sort_factor = 'environmental impact'
     else:
         return routes_data
 
@@ -560,8 +628,11 @@ def sort_routes(chosen_value, routes_data):
                 routes_data[pivotIndex], routes_data[index] = \
                     routes_data[index], routes_data[pivotIndex]
         return pivotIndex
-
-    return quickSort(routes_data)
+    sorted_routes = quickSort(routes_data) 
+    #error handling print
+    # print("Sorted routes based on {}: {}".format(chosen_value, sorted_routes))
+    return sorted_routes
+    # return quickSort(routes_data)
 
 
 # Initiate Dash app and run server
