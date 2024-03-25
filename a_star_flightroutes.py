@@ -534,29 +534,38 @@ app.layout = html.Div([
     [Output('stored-routes', 'data'),
      Output('error-message', 'children')],
     [Input('find-routes', 'n_clicks')],
-    [State('start-iata', 'value'), State('end-iata', 'value'),
+    [State('start-iata', 'value'), 
+     State('end-iata', 'value'),
      State('sort-by-plane', 'value')]
 )
 def update_stored_routes(n_clicks, start_iata, end_iata, plane_iata):
     if n_clicks > 0:
-        if start_iata and end_iata and plane_iata:  # Validate IATA codes are entered
-
-            start_id = next((airport.airportid for airport in graph.airports.values()
-                             if airport.iata == start_iata), None)
-            end_id = next((airport.airportid for airport in graph.airports.values()
-                           if airport.iata == end_iata), None)
-            if start_id and end_id and plane_iata:
-                price = graph.co2_data[plane_iata].price_per_km
-                co2 = graph.co2_data[plane_iata].co2_emission_per_km
-                routes = find_multiple_routes(
-                    graph, start_id, end_id, price, co2, plane_iata)
-                return routes, ''
-            else:
-                # message for invalid IATA codes
-                return [], 'Invalid IATA codes entered.'
-        else:
+        # Check if both IATA codes are provided
+        if not start_iata or not end_iata:
             return [], 'Please enter both start and destination IATA codes.'
-    return [], ''
+
+        # Verify the validity of the provided IATA codes
+        start_id = next((airport.airportid for airport in graph.airports.values()
+                         if airport.iata == start_iata), None)
+        end_id = next((airport.airportid for airport in graph.airports.values()
+                       if airport.iata == end_iata), None)
+
+        if not start_id or not end_id:
+            return [], 'Invalid IATA codes entered.'
+
+        # Check if a plane IATA code is selected
+        if not plane_iata:
+            return [], 'Please select a plane.'
+
+        # Proceed if all inputs are valid
+        price = graph.co2_data[plane_iata].price_per_km
+        co2 = graph.co2_data[plane_iata].co2_emission_per_km
+        routes = find_multiple_routes(
+            graph, start_id, end_id, price, co2, plane_iata)
+        return routes, ''
+
+    return [], ''  # Default return if no clicks yet
+
 
 
 # Callback to update the map based on the routes data stored
