@@ -412,21 +412,27 @@ def plot_routes(graph, route_infos):
 # Define the layout of the app
 app.layout = html.Div([
     html.Div([
-        dcc.Input(
-            id='start-iata',
-            type='text',
-            placeholder='Enter start IATA code',
-            style={'marginRight': '10px', 'width': '20%', 'height': '36px',
-                   'padding': '0 12px'}  # Adjust marginRight
+        dcc.Dropdown(
+        id='start-iata',
+        options = [],
+        search_value ='',
+        placeholder='Enter Source Airport',
+        style={'marginRight': '10px', 'width': '50%', 'height': '36px',
+                   'padding': '0 12px'},  # Adjust marginRight
+        value= ''
+    ),
+
+        dcc.Dropdown(
+            id='end-iata',
+            options=[],
+            search_value='',
+            placeholder='Enter destination airport',
+            style={'marginRight': '10px', 'width': '50%', 'height': '36px',
+                   'padding': '0 12px'},  # Adjust marginRight
+            value= ''
         ),
 
-        dcc.Input(
-            id='end-iata',
-            type='text',
-            placeholder='Enter destination IATA code',
-            style={'marginRight': '10px', 'width': '20%', 'height': '36px',
-                   'padding': '0 12px'}  # Adjust marginRight
-        ),
+        html.Div(id = "autocomplete-output"),
 
         html.Label('Plane: '),
         dcc.Dropdown(
@@ -514,6 +520,28 @@ app.layout = html.Div([
 
 ])
 
+@app.callback(
+    Output('start-iata', 'options'),
+    [Input('start-iata', 'search_value')],
+    [State('start-iata', 'value')]
+)
+
+def update_autocomplete_suggestions(search_value, value):
+    if search_value:
+        # Display no options if there is no input
+        filtered_airports = [airport for airport in graph.airports.values() if ((search_value.lower() in airport.iata.lower()) or (search_value.lower() in airport.city.lower()) or (search_value.lower() in airport.name.lower()) or (search_value.lower() in airport.country.lower())) and airport.iata.lower() != "\\n"]
+    
+        # Create options for dropdown
+        options = [{'label': f"{airport.name} ({airport.iata})", 'value': airport.iata} for airport in filtered_airports]
+        print("\n")
+        for i in options:
+            print(i)
+        return options
+    else:
+        return []
+
+
+
 
 # Callback to store the routes data
 @app.callback(
@@ -522,6 +550,9 @@ app.layout = html.Div([
     [Input('find-routes', 'n_clicks')],
     [State('start-iata', 'value'), State('end-iata', 'value'), State('sort-by-plane', 'value')]
 )
+
+
+
 def update_stored_routes(n_clicks, start_iata, end_iata, plane_iata):
     if n_clicks > 0:
         if start_iata and end_iata and plane_iata:  # Validate IATA codes are entered
