@@ -425,21 +425,28 @@ def plot_routes(graph, route_infos):
 # Define the layout of the app
 app.layout = html.Div([
     html.Div([
-        dcc.Input(
+        dcc.Dropdown(
             id='start-iata',
-            type='text',
-            placeholder='Enter start IATA code',
-            style={'marginRight': '10px', 'width': '12.5%', 'height': '36px',
-                   'padding': '0 12px'}  # Adjust marginRight
+
+            options=[],
+            search_value='',
+            placeholder='Enter Source Airport',
+            style={'marginRight': '10px', 'width': '20vw', 'height': '36px',
+                   },  # Adjust marginRight
+            value=''
         ),
 
-        dcc.Input(
+        dcc.Dropdown(
             id='end-iata',
-            type='text',
-            placeholder='Enter destination IATA code',
-            style={'marginRight': '10px', 'width': '12.5%', 'height': '36px',
-                   'padding': '0 12px'}  # Adjust marginRight
+            options=[],
+            placeholder='Enter destination airport',
+            style={'marginRight': '10px', 'width': '20vw', 'height': '36px',
+                   },  # Adjust marginRight
+            value=''
+
         ),
+
+        html.Div(id="autocomplete-output"),
 
         html.Label('Plane: '),
         dcc.Dropdown(
@@ -475,8 +482,8 @@ app.layout = html.Div([
             value='',
             placeholder='Choose plane',
             # Ensure this is the same width as the input boxes
-            style={'width': '12vw', 'padding-left': '20px',
-                   'padding-right': '20px'}
+            style={'width': '12vw', 'padding-left': '20px'}
+
         ),
 
         html.Button(
@@ -484,7 +491,7 @@ app.layout = html.Div([
             id='find-routes',
             n_clicks=0,
             # Adjust marginRight as needed
-            style={'marginRight': '10px', 'height': '36px',
+            style={'margin-left': '20px', 'marginRight': '20px', 'height': '36px',
                    'background-color': "rgb(51,117,229)",
                    "color": "white"}
         ),
@@ -529,43 +536,58 @@ app.layout = html.Div([
 ])
 
 
+@app.callback(
+    Output('start-iata', 'options'),
+    Output('start-iata', 'value'),
+    [Input('start-iata', 'search_value')],
+    [State('start-iata', 'value')]
+)
+@app.callback(
+    Output('end-iata', 'options'),
+    Output('end-iata', 'value'),
+    [Input('end-iata', 'search_value')],
+    [State('end-iata', 'value')]
+)
+def update_autocomplete_suggestions(search_value, value):
+    if search_value:
+        # Display no options if there is no input
+        filtered_airports = [airport for airport in graph.airports.values() if ((search_value.lower() in airport.iata.lower()) or (search_value.lower(
+        ) in airport.city.lower()) or (search_value.lower() in airport.name.lower()) or (search_value.lower() in airport.country.lower())) and airport.iata.lower() != "\\n"]
+
+        # Create options for dropdown
+        options = [{'label': f"{airport.name} ({airport.iata}) [{airport.city}, {airport.country}]",
+                    'value': airport.iata} for airport in filtered_airports]
+        return options, value
+
+
 # Callback to store the routes data
 @app.callback(
     [Output('stored-routes', 'data'),
      Output('error-message', 'children')],
     [Input('find-routes', 'n_clicks')],
-    [State('start-iata', 'value'), 
-     State('end-iata', 'value'),
+    [State('start-iata', 'value'), State('end-iata', 'value'),
      State('sort-by-plane', 'value')]
 )
 def update_stored_routes(n_clicks, start_iata, end_iata, plane_iata):
     if n_clicks > 0:
-        # Check if both IATA codes are provided
-        if not start_iata or not end_iata:
+        if start_iata and end_iata and plane_iata:  # Validate IATA codes are entered
+
+            start_id = next((airport.airportid for airport in graph.airports.values()
+                             if airport.iata == start_iata), None)
+            end_id = next((airport.airportid for airport in graph.airports.values()
+                           if airport.iata == end_iata), None)
+            if start_id and end_id and plane_iata:
+                price = graph.co2_data[plane_iata].price_per_km
+                co2 = graph.co2_data[plane_iata].co2_emission_per_km
+                routes = find_multiple_routes(
+                    graph, start_id, end_id, price, co2, plane_iata)
+                return routes, ''
+            else:
+                # message for invalid IATA codes
+                return [], 'Invalid IATA codes entered.'
+        else:
             return [], 'Please enter both start and destination IATA codes.'
-
-        # Verify the validity of the provided IATA codes
-        start_id = next((airport.airportid for airport in graph.airports.values()
-                         if airport.iata == start_iata), None)
-        end_id = next((airport.airportid for airport in graph.airports.values()
-                       if airport.iata == end_iata), None)
-
-        if not start_id or not end_id:
-            return [], 'Invalid IATA codes entered.'
-
-        # Check if a plane IATA code is selected
-        if not plane_iata:
-            return [], 'Please select a plane.'
-
-        # Proceed if all inputs are valid
-        price = graph.co2_data[plane_iata].price_per_km
-        co2 = graph.co2_data[plane_iata].co2_emission_per_km
-        routes = find_multiple_routes(
-            graph, start_id, end_id, price, co2, plane_iata)
-        return routes, ''
-
-    return [], ''  # Default return if no clicks yet
-
+    return [], ''
 
 
 # Callback to update the map based on the routes data stored
@@ -648,11 +670,8 @@ def display_click_data(clickData, routes_data):
             info.append(html.Br())
             info.append(html.Br())
 
-            info.append(html.Strong("Plane Flown: "))
-            info.append(
-                f"{route_info['plane name']} ({route_info['plane iata']})")
-            info.append(html.Br())
-            info.append(html.Br())
+            info.append(html.Div(
+                f"Plane Flown: {route_info['plane name']} ({route_info['plane iata']})"))
 
             # Add total distance and estimated cost
             info.append(
