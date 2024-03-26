@@ -427,6 +427,7 @@ app.layout = html.Div([
     html.Div([
         dcc.Dropdown(
             id='start-iata',
+
             options=[],
             search_value='',
             placeholder='Enter Source Airport',
@@ -442,6 +443,7 @@ app.layout = html.Div([
             style={'marginRight': '10px', 'width': '20vw', 'height': '36px',
                    },  # Adjust marginRight
             value=''
+
         ),
 
         html.Div(id="autocomplete-output"),
@@ -481,6 +483,7 @@ app.layout = html.Div([
             placeholder='Choose plane',
             # Ensure this is the same width as the input boxes
             style={'width': '12vw', 'padding-left': '20px'}
+
         ),
 
         html.Button(
@@ -506,6 +509,7 @@ app.layout = html.Div([
             style={'width': '12vw', 'padding-left': '20px'}
         ),
     ], style={'display': 'flex', 'alignItems': 'center'}),
+    html.Div(id='error-message', style={'color': 'red'}),
     dcc.Store(id='stored-routes'),  # Store component for the routes
 
     # flight map
@@ -528,7 +532,6 @@ app.layout = html.Div([
         'top': '35vh',  # Adjusts the position from the top
         'margin-right': '20px',  # Adjusts the margin from the right
     }),
-    html.Div(id='error-message', style={'color': 'red'}),
 
 ])
 
