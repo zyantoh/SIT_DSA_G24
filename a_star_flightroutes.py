@@ -537,30 +537,45 @@ app.layout = html.Div([
 
 
 @app.callback(
-    Output('start-iata', 'options'),
-    Output('start-iata', 'value'),
+    [Output('start-iata', 'options'), Output('start-iata', 'value')],
     [Input('start-iata', 'search_value')],
     [State('start-iata', 'value')]
 )
 @app.callback(
-    Output('end-iata', 'options'),
-    Output('end-iata', 'value'),
+    [Output('end-iata', 'options'), Output('end-iata', 'value')],
     [Input('end-iata', 'search_value')],
     [State('end-iata', 'value')]
 )
 def update_autocomplete_suggestions(search_value, value):
-    if search_value:
-        # Display no options if there is no input
-        filtered_airports = [airport for airport in graph.airports.values() if ((search_value.lower() in airport.iata.lower()) or (search_value.lower(
-        ) in airport.city.lower()) or (search_value.lower() in airport.name.lower()) or (search_value.lower() in airport.country.lower())) and airport.iata.lower() != "\\n"]
+    # Initialize the options list as empty
+    options = []
 
-        # Create options for dropdown
+    # Proceed with filtering airports based on the search value if provided
+    if search_value:
+        filtered_airports = [airport for airport in graph.airports.values()
+                             if (search_value.lower() in airport.iata.lower() or
+                                 search_value.lower() in airport.city.lower() or
+                                 search_value.lower() in airport.name.lower() or
+                                 search_value.lower() in airport.country.lower())
+                             and airport.iata.lower() != "\\n"]
+
         options = [{'label': f"{airport.name} ({airport.iata}) [{airport.city}, {airport.country}]",
                     'value': airport.iata} for airport in filtered_airports]
-        return options, value
 
+    # Ensure the currently selected value is part of the options, if applicable
+    if value and not any(option['value'] == value for option in options):
+        selected_airport = next(
+            (airport for airport in graph.airports.values() if airport.iata == value), None)
+        if selected_airport:
+            # Add the currently selected option to the options list
+            options.insert(0, {'label': f"{selected_airport.name} ({selected_airport.iata}) [{selected_airport.city}, {selected_airport.country}]",
+                               'value': selected_airport.iata})
+
+    return options, value
 
 # Callback to store the routes data
+
+
 @app.callback(
     [Output('stored-routes', 'data'),
      Output('error-message', 'children')],
