@@ -42,20 +42,21 @@ class Route:
         self.stops = int(stops)
         self.equipment = equipment
 
+
 class Co2:
-    def __init__(self,name, equipment, icao, co2_emission_per_km, price_per_km):
+    def __init__(self, name, equipment, icao, co2_emission_per_km, price_per_km):
         self.name = name
         self.equipment = equipment
         self.icao = icao
         self.co2_emission_per_km = float(co2_emission_per_km)
         self.price_per_km = float(price_per_km)
-        
+
 
 class Graph:
     def __init__(self):
         self.airports = {}
-        self.co2_data = {} 
-        self.routes = {}  
+        self.co2_data = {}
+        self.routes = {}
         self.adjacency_list = {}
 
     def add_airport(self, airport):
@@ -73,7 +74,8 @@ class Graph:
         # Add the route to the adjacency list
         if route.sourceAirportID not in self.adjacency_list:
             self.adjacency_list[route.sourceAirportID] = []
-        self.adjacency_list[route.sourceAirportID].append(route.destinationAirportID)
+        self.adjacency_list[route.sourceAirportID].append(
+            route.destinationAirportID)
 
         # Store detailed route information
         route_key = (route.sourceAirportID, route.destinationAirportID)
@@ -119,7 +121,7 @@ def load_data(graph, airports_filename, routes_filename, co2_filename):
         print(f"Error reading routes CSV file: {error}")
     except Exception as error:
         print(f"Unexpected error when loading routes: {error}")
-        
+
     # Load CO2 data
     try:
         with open(co2_filename, 'r', encoding='utf-8') as co2_file:
@@ -138,6 +140,7 @@ def load_data(graph, airports_filename, routes_filename, co2_filename):
         print(f"Error reading CO2 data CSV file: {error}")
     except Exception as error:
         print(f"Unexpected error when loading CO2 data: {error}")
+
 
 def haversine(lat1, lon1, lat2, lon2):
     # Haversine formula to calculate distance between two points on the surface of the sphere
@@ -165,14 +168,17 @@ def estimate_cost(distance, cost_per_km):
     # Estimate the cost of a flight given the distance.
     return distance * cost_per_km
 
+
 def estimate_co2(graph, route, default_co2_emission_per_km):
     total_co2 = 0.0
     for i in range(len(route) - 1):
         try:
             # Calculate the distance between each pair of airports
             distance = haversine(
-                graph.airports[route[i]].latitude, graph.airports[route[i]].longitude,
-                graph.airports[route[i+1]].latitude, graph.airports[route[i+1]].longitude
+                graph.airports[route[i]
+                               ].latitude, graph.airports[route[i]].longitude,
+                graph.airports[route[i+1]
+                               ].latitude, graph.airports[route[i+1]].longitude
             )
 
             # Create a unique key for the route segment
@@ -214,7 +220,7 @@ def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane
         try:
             # map of vertices starting with infinity value
             distances = {airport_id: float('infinity')
-                        for airport_id in graph.airports}
+                         for airport_id in graph.airports}
 
             # map of vertices that have been visited before
             previous = {airport_id: None for airport_id in graph.airports}
@@ -232,7 +238,8 @@ def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane
                 # first loop: current_distance = 0, current_vertex = start_id
                 current_distance, current_vertex = heapq.heappop(pq)
                 # potential of current vertex (distance from vertex to end)
-                current_vertex_potential = potential(graph, current_vertex, end_id)
+                current_vertex_potential = potential(
+                    graph, current_vertex, end_id)
 
                 # destination reached
                 if current_vertex == end_id:
@@ -242,7 +249,8 @@ def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane
                     # number_of_adj = len(graph.adjacency_list[current_vertex])
 
                     # potential weight from neighbour to end
-                    neighbour_vertex_potential = potential(graph, neighbor, end_id)
+                    neighbour_vertex_potential = potential(
+                        graph, neighbor, end_id)
                     # weight of edge between current vertex and neighbouring vertex
                     # h(n)
                     weight_of_edge = original_potential + \
@@ -272,7 +280,7 @@ def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane
             path, current_vertex = [], end_id
             while current_vertex is not None:
                 path.insert(0, current_vertex)
-                current_vertex = previous[current_vertex]  
+                current_vertex = previous[current_vertex]
 
             return path if path[0] == start_id else []
         except Exception as error:
@@ -292,24 +300,27 @@ def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane
 
             # Calculate the total distance for the route
             total_distance = sum(haversine(
-                graph.airports[path[i]].latitude, graph.airports[path[i]].longitude,
-                graph.airports[path[i+1]].latitude, graph.airports[path[i+1]].longitude
+                graph.airports[path[i]
+                               ].latitude, graph.airports[path[i]].longitude,
+                graph.airports[path[i+1]
+                               ].latitude, graph.airports[path[i+1]].longitude
             ) for i in range(len(path) - 1))
 
             # Estimate the total cost for the route
             total_cost = estimate_cost(total_distance, cost_per_km)
-            #Fix estimate total co2 emission
-            total_co2 = estimate_co2(graph, path, co2_per_km)  # Use the entire route path and the graph
+            # Fix estimate total co2 emission
+            # Use the entire route path and the graph
+            total_co2 = estimate_co2(graph, path, co2_per_km)
             # Add the path, distance, and cost, co2 to the routes_info
             plane_name = graph.co2_data[plane_iata].name
-        
+
             routes_info.append({
                 'route': path,
                 'distance': total_distance,
                 'cost': total_cost,
-                'environmental impact' : total_co2,
-                'plane name' : plane_name,
-                'plane iata' : plane_iata
+                'environmental impact': total_co2,
+                'plane name': plane_name,
+                'plane iata': plane_iata
             })
 
             # Add the edges of the path to the excluded_paths to prevent reuse
@@ -326,6 +337,8 @@ graph = Graph()
 load_data(graph, 'airports.csv', 'routes.csv', 'planes_co2_price.csv')
 
 # Function to generate the figure with all routes
+
+
 def plot_routes(graph, route_infos):
     fig = go.Figure()
 
@@ -413,61 +426,61 @@ def plot_routes(graph, route_infos):
 app.layout = html.Div([
     html.Div([
         dcc.Dropdown(
-        id='start-iata',
-        options = [],
-        search_value = '',
-        placeholder='Enter Source Airport',
-        style={'marginRight': '10px', 'width': '90%', 'height': '36px',
+            id='start-iata',
+            options=[],
+            search_value='',
+            placeholder='Enter Source Airport',
+            style={'marginRight': '10px', 'width': '20vw', 'height': '36px',
                    },  # Adjust marginRight
-        value= ''
-    ),
+            value=''
+        ),
 
         dcc.Dropdown(
             id='end-iata',
             options=[],
             placeholder='Enter destination airport',
-            style={'marginRight': '10px', 'width': '90%', 'height': '36px',
+            style={'marginRight': '10px', 'width': '20vw', 'height': '36px',
                    },  # Adjust marginRight
-            value= ''
+            value=''
         ),
 
-        html.Div(id = "autocomplete-output"),
+        html.Div(id="autocomplete-output"),
 
         html.Label('Plane: '),
         dcc.Dropdown(
             id='sort-by-plane',
             options=[
                 {'label': 'Boeing 767', 'value': '767'},
-                {'label': 'Airbus A320neo', 'value': '32N'}, 
-                {'label': 'Boeing 777', 'value': '777'}, 
-                {'label': 'Boeing 747', 'value': '747'}, 
-                {'label': 'Airbus A320', 'value': '320'}, 
-                {'label': 'Airbus A319', 'value': '319'}, 
-                {'label': 'Boeing 737', 'value': '737'}, 
-                {'label': 'Airbus A318', 'value': '318'}, 
-                {'label': 'Embraer 190', 'value': 'E90'}, 
-                {'label': 'Airbus A350', 'value': '350'}, 
-                {'label': 'Airbus A330', 'value': '330'}, 
-                {'label': 'Boeing 787', 'value': '787'}, 
-                {'label': 'Airbus A321', 'value': '321'}, 
-                {'label': 'Airbus A321neo', 'value': '32Q'}, 
-                {'label': 'Airbus A380', 'value': '380'}, 
-                {'label': 'Airbus A340', 'value': '340'}, 
-                {'label': 'Boeing 787-10', 'value': '78J'}, 
-                {'label': 'Embraer 175', 'value': 'E75'}, 
-                {'label': 'Embraer 170', 'value': 'E70'}, 
-                {'label': 'Embraer 195', 'value': 'E95'}, 
-                {'label': 'Boeing 757', 'value': '757'}, 
-                {'label': 'Airbus A330-900neo', 'value': '339'}, 
-                {'label': 'Boeing 717', 'value': '717'}, 
-                {'label': 'Fokker 100', 'value': '100'}, 
-                {'label': 'Airbus A319neo', 'value': '31N'}, 
+                {'label': 'Airbus A320neo', 'value': '32N'},
+                {'label': 'Boeing 777', 'value': '777'},
+                {'label': 'Boeing 747', 'value': '747'},
+                {'label': 'Airbus A320', 'value': '320'},
+                {'label': 'Airbus A319', 'value': '319'},
+                {'label': 'Boeing 737', 'value': '737'},
+                {'label': 'Airbus A318', 'value': '318'},
+                {'label': 'Embraer 190', 'value': 'E90'},
+                {'label': 'Airbus A350', 'value': '350'},
+                {'label': 'Airbus A330', 'value': '330'},
+                {'label': 'Boeing 787', 'value': '787'},
+                {'label': 'Airbus A321', 'value': '321'},
+                {'label': 'Airbus A321neo', 'value': '32Q'},
+                {'label': 'Airbus A380', 'value': '380'},
+                {'label': 'Airbus A340', 'value': '340'},
+                {'label': 'Boeing 787-10', 'value': '78J'},
+                {'label': 'Embraer 175', 'value': 'E75'},
+                {'label': 'Embraer 170', 'value': 'E70'},
+                {'label': 'Embraer 195', 'value': 'E95'},
+                {'label': 'Boeing 757', 'value': '757'},
+                {'label': 'Airbus A330-900neo', 'value': '339'},
+                {'label': 'Boeing 717', 'value': '717'},
+                {'label': 'Fokker 100', 'value': '100'},
+                {'label': 'Airbus A319neo', 'value': '31N'},
                 {'label': 'Fokker 70', 'value': 'F70'}
             ],
-            value='', 
+            value='',
             placeholder='Choose plane',
             # Ensure this is the same width as the input boxes
-            style={'width': '50%', 'padding-left': '20px'}
+            style={'width': '12vw', 'padding-left': '20px'}
         ),
 
         html.Button(
@@ -475,7 +488,7 @@ app.layout = html.Div([
             id='find-routes',
             n_clicks=0,
             # Adjust marginRight as needed
-            style={'marginRight': '10px', 'height': '36px',
+            style={'margin-left': '20px', 'marginRight': '20px', 'height': '36px',
                    'background-color': "rgb(51,117,229)",
                    "color": "white"}
         ),
@@ -487,10 +500,10 @@ app.layout = html.Div([
                 {'label': 'Cost', 'value': 'Cost'},
                 {'label': 'Environmental Impact', 'value': 'Environmental Impact'}
             ],
-            value='', 
+            value='',
             placeholder='Sort routes by',
             # Ensure this is the same width as the input boxes
-            style={'width': '40%', 'padding-left': '20px'}
+            style={'width': '12vw', 'padding-left': '20px'}
         ),
     ], style={'display': 'flex', 'alignItems': 'center'}),
     dcc.Store(id='stored-routes'),  # Store component for the routes
@@ -519,29 +532,29 @@ app.layout = html.Div([
 
 ])
 
+
 @app.callback(
     Output('start-iata', 'options'),
     Output('start-iata', 'value'),
     [Input('start-iata', 'search_value')],
     [State('start-iata', 'value')]
 )
-
 @app.callback(
     Output('end-iata', 'options'),
     Output('end-iata', 'value'),
     [Input('end-iata', 'search_value')],
     [State('end-iata', 'value')]
 )
-
 def update_autocomplete_suggestions(search_value, value):
     if search_value:
         # Display no options if there is no input
-        filtered_airports = [airport for airport in graph.airports.values() if ((search_value.lower() in airport.iata.lower()) or (search_value.lower() in airport.city.lower()) or (search_value.lower() in airport.name.lower()) or (search_value.lower() in airport.country.lower())) and airport.iata.lower() != "\\n"]
-    
+        filtered_airports = [airport for airport in graph.airports.values() if ((search_value.lower() in airport.iata.lower()) or (search_value.lower(
+        ) in airport.city.lower()) or (search_value.lower() in airport.name.lower()) or (search_value.lower() in airport.country.lower())) and airport.iata.lower() != "\\n"]
+
         # Create options for dropdown
-        options = [{'label': f"{airport.name} ({airport.iata}) [{airport.city}, {airport.country}]", 'value': airport.iata} for airport in filtered_airports]
-        return options , value
-    
+        options = [{'label': f"{airport.name} ({airport.iata}) [{airport.city}, {airport.country}]",
+                    'value': airport.iata} for airport in filtered_airports]
+        return options, value
 
 
 # Callback to store the routes data
@@ -549,15 +562,13 @@ def update_autocomplete_suggestions(search_value, value):
     [Output('stored-routes', 'data'),
      Output('error-message', 'children')],
     [Input('find-routes', 'n_clicks')],
-    [State('start-iata', 'value'), State('end-iata', 'value'), State('sort-by-plane', 'value')]
+    [State('start-iata', 'value'), State('end-iata', 'value'),
+     State('sort-by-plane', 'value')]
 )
-
-
-
 def update_stored_routes(n_clicks, start_iata, end_iata, plane_iata):
     if n_clicks > 0:
         if start_iata and end_iata and plane_iata:  # Validate IATA codes are entered
-            
+
             start_id = next((airport.airportid for airport in graph.airports.values()
                              if airport.iata == start_iata), None)
             end_id = next((airport.airportid for airport in graph.airports.values()
@@ -565,14 +576,15 @@ def update_stored_routes(n_clicks, start_iata, end_iata, plane_iata):
             if start_id and end_id and plane_iata:
                 price = graph.co2_data[plane_iata].price_per_km
                 co2 = graph.co2_data[plane_iata].co2_emission_per_km
-                routes = find_multiple_routes(graph, start_id, end_id, price, co2, plane_iata)
+                routes = find_multiple_routes(
+                    graph, start_id, end_id, price, co2, plane_iata)
                 return routes, ''
             else:
-                #message for invalid IATA codes
+                # message for invalid IATA codes
                 return [], 'Invalid IATA codes entered.'
         else:
             return [], 'Please enter both start and destination IATA codes.'
-    return [], '' 
+    return [], ''
 
 
 # Callback to update the map based on the routes data stored
@@ -608,6 +620,8 @@ def update_map(routes_data):
         return blank_figure, ""
 
 # Callback to display information on a route when route is clicked on
+
+
 @app.callback(
     [Output('flight-info', 'children'),
      Output('route-instructions', 'children', allow_duplicate=True)],
@@ -653,7 +667,8 @@ def display_click_data(clickData, routes_data):
             info.append(html.Br())
             info.append(html.Br())
 
-            info.append(html.Div(f"Plane Flown: {route_info['plane name']} ({route_info['plane iata']})"))
+            info.append(html.Div(
+                f"Plane Flown: {route_info['plane name']} ({route_info['plane iata']})"))
 
             # Add total distance and estimated cost
             info.append(
@@ -661,17 +676,20 @@ def display_click_data(clickData, routes_data):
             info.append(html.Div(f"Estimated Cost: ${route_info['cost']:.2f}"))
 
             # Add total CO2 emissions
-            info.append(html.Div(f"Total CO2 Emissions: {route_info['environmental impact']:.2f} kg"))
-            
+            info.append(
+                html.Div(f"Total CO2 Emissions: {route_info['environmental impact']:.2f} kg"))
+
             print("info displayed")
             return html.Div(info, style={'white-space': 'pre-line'}), ""
 
     return []
 
 # Callback to sort routes based on the factors available (WIP)
+
+
 @app.callback(
     Output('stored-routes', 'data', allow_duplicate=True),
-    #Input('sort-by-plane', 'value'),
+    # Input('sort-by-plane', 'value'),
     Input('sort-by-dropdown', 'value'),
     Input('stored-routes', 'data'),
     prevent_initial_call=True  # dont callback if dropdown is not touched at the start
@@ -693,7 +711,8 @@ def sort_routes(chosen_value, routes_data):
             size = len(routes_data)
             if size > 1:
                 pivotIndex = partition(routes_data, sort_factor)
-                routes_data[0:pivotIndex] = quickSort(routes_data[0:pivotIndex])
+                routes_data[0:pivotIndex] = quickSort(
+                    routes_data[0:pivotIndex])
                 routes_data[pivotIndex +
                             1:size] = quickSort(routes_data[pivotIndex+1:size])
             return routes_data
@@ -709,20 +728,21 @@ def sort_routes(chosen_value, routes_data):
                     routes_data[pivotIndex], routes_data[index] = \
                         routes_data[index], routes_data[pivotIndex]
             return pivotIndex
-        sorted_routes = quickSort(routes_data) 
-        #error handling print
+        sorted_routes = quickSort(routes_data)
+        # error handling print
         # print("Sorted routes based on {}: {}".format(chosen_value, sorted_routes))
         return sorted_routes
-    
+
     except KeyError as error:
         print(f"Key error during sorting: {error}. Key used: {sort_factor}")
-        return [] 
+        return []
     except TypeError as error:
         print(f"Type error during sorting: {error}")
         return []
     except Exception as error:
         print(f"An unexpected error occurred during sorting: {error}")
-        return [] 
+        return []
+
 
 # Initiate Dash app and run server
 if __name__ == '__main__':
