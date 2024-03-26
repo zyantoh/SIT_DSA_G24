@@ -415,20 +415,19 @@ app.layout = html.Div([
         dcc.Dropdown(
         id='start-iata',
         options = [],
-        search_value ='',
+        search_value = '',
         placeholder='Enter Source Airport',
-        style={'marginRight': '10px', 'width': '50%', 'height': '36px',
-                   'padding': '0 12px'},  # Adjust marginRight
+        style={'marginRight': '10px', 'width': '90%', 'height': '36px',
+                   },  # Adjust marginRight
         value= ''
     ),
 
         dcc.Dropdown(
             id='end-iata',
             options=[],
-            search_value='',
             placeholder='Enter destination airport',
-            style={'marginRight': '10px', 'width': '50%', 'height': '36px',
-                   'padding': '0 12px'},  # Adjust marginRight
+            style={'marginRight': '10px', 'width': '90%', 'height': '36px',
+                   },  # Adjust marginRight
             value= ''
         ),
 
@@ -468,7 +467,7 @@ app.layout = html.Div([
             value='', 
             placeholder='Choose plane',
             # Ensure this is the same width as the input boxes
-            style={'width': '30%', 'padding-left': '20px'}
+            style={'width': '50%', 'padding-left': '20px'}
         ),
 
         html.Button(
@@ -522,8 +521,16 @@ app.layout = html.Div([
 
 @app.callback(
     Output('start-iata', 'options'),
+    Output('start-iata', 'value'),
     [Input('start-iata', 'search_value')],
     [State('start-iata', 'value')]
+)
+
+@app.callback(
+    Output('end-iata', 'options'),
+    Output('end-iata', 'value'),
+    [Input('end-iata', 'search_value')],
+    [State('end-iata', 'value')]
 )
 
 def update_autocomplete_suggestions(search_value, value):
@@ -532,15 +539,9 @@ def update_autocomplete_suggestions(search_value, value):
         filtered_airports = [airport for airport in graph.airports.values() if ((search_value.lower() in airport.iata.lower()) or (search_value.lower() in airport.city.lower()) or (search_value.lower() in airport.name.lower()) or (search_value.lower() in airport.country.lower())) and airport.iata.lower() != "\\n"]
     
         # Create options for dropdown
-        options = [{'label': f"{airport.name} ({airport.iata})", 'value': airport.iata} for airport in filtered_airports]
-        print("\n")
-        for i in options:
-            print(i)
-        return options
-    else:
-        return []
-
-
+        options = [{'label': f"{airport.name} ({airport.iata}) [{airport.city}, {airport.country}]", 'value': airport.iata} for airport in filtered_airports]
+        return options , value
+    
 
 
 # Callback to store the routes data
