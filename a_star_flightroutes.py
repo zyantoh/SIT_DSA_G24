@@ -1,6 +1,6 @@
 import heapq
 import csv
-import numpy as np
+import ast
 from dash import Dash, dcc, html, Input, Output, State
 import plotly.graph_objs as go
 from math import radians, cos, sin, asin, sqrt
@@ -44,13 +44,12 @@ class Route:
 
 
 class Co2:
-    def __init__(self, name, equipment, icao, co2_emission_per_km, price_per_km):
+    def __init__(self, name, equipment, co2_emission_per_km, price_per_km,unsupported_airportid):
         self.name = name
         self.equipment = equipment
-        self.icao = icao
         self.co2_emission_per_km = float(co2_emission_per_km)
         self.price_per_km = float(price_per_km)
-
+        self.unsupported_airportid = unsupported_airportid
 
 class Graph:
     def __init__(self):
@@ -215,9 +214,11 @@ def potential(graph, start_id, end_id):
 
 # Dijkstra's algorithm with weighted edge (A* algorithm) to find multiple paths
 # A* formula : f(n) = g(n) + h(n)
-def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane_iata, num_routes=5):
+def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane_equipment, num_routes=5):
     def a_star_with_exclusions(start_id, end_id, excluded_paths):
         try:
+            unsupported_airportid = graph.co2_data[plane_equipment].unsupported_airportid
+            unsupported_airportid = ast.literal_eval(unsupported_airportid)
             # map of vertices starting with infinity value
             distances = {airport_id: float('infinity')
                          for airport_id in graph.airports}
@@ -266,8 +267,16 @@ def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane
                     distance = current_distance + \
                         potential(graph, current_vertex, neighbor)
                     weight_of_vertex = distance + weight_of_edge
+
+                    # Check if the airport is unsupported by airline
+                    invalid_airport = False
+                    for i in unsupported_airportid:
+                        if i == int(neighbor):
+                            invalid_airport = True
+                            break
                     # updates neighbouring vertex distance if it took a shorter distance
-                    if weight_of_vertex < distances[neighbor]:
+
+                    if invalid_airport==False and weight_of_vertex < distances[neighbor]:
                         # closest distance from start
                         distances[neighbor] = weight_of_vertex
                         # previous vertex path taken
@@ -312,7 +321,7 @@ def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane
             # Use the entire route path and the graph
             total_co2 = estimate_co2(graph, path, co2_per_km)
             # Add the path, distance, and cost, co2 to the routes_info
-            plane_name = graph.co2_data[plane_iata].name
+            plane_name = graph.co2_data[plane_equipment].name
 
             routes_info.append({
                 'route': path,
@@ -320,7 +329,7 @@ def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane
                 'cost': total_cost,
                 'environmental impact': total_co2,
                 'plane name': plane_name,
-                'plane iata': plane_iata
+                'plane iata': plane_equipment
             })
 
             # Add the edges of the path to the excluded_paths to prevent reuse
@@ -334,11 +343,9 @@ def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane
 # Create the Dash app
 app = Dash(__name__)
 graph = Graph()
-load_data(graph, 'airports.csv', 'routes.csv', 'planes_co2_price.csv')
+load_data(graph, 'airports.csv', 'routes.csv', 'new_planes_co2_price.csv')
 
 # Function to generate the figure with all routes
-
-
 def plot_routes(graph, route_infos):
     fig = go.Figure()
 
@@ -459,22 +466,10 @@ app.layout = html.Div([
                 {'label': 'Airbus A320', 'value': '320'},
                 {'label': 'Airbus A319', 'value': '319'},
                 {'label': 'Boeing 737', 'value': '737'},
-                {'label': 'Airbus A318', 'value': '318'},
-                {'label': 'Embraer 190', 'value': 'E90'},
-                {'label': 'Airbus A350', 'value': '350'},
                 {'label': 'Airbus A330', 'value': '330'},
-                {'label': 'Boeing 787', 'value': '787'},
-                {'label': 'Airbus A321', 'value': '321'},
-                {'label': 'Airbus A321neo', 'value': '32Q'},
-                {'label': 'Airbus A380', 'value': '380'},
-                {'label': 'Airbus A340', 'value': '340'},
-                {'label': 'Boeing 787-10', 'value': '78J'},
                 {'label': 'Embraer 175', 'value': 'E75'},
                 {'label': 'Embraer 170', 'value': 'E70'},
                 {'label': 'Embraer 195', 'value': 'E95'},
-                {'label': 'Boeing 757', 'value': '757'},
-                {'label': 'Airbus A330-900neo', 'value': '339'},
-                {'label': 'Boeing 717', 'value': '717'},
                 {'label': 'Fokker 100', 'value': '100'},
                 {'label': 'Airbus A319neo', 'value': '31N'},
                 {'label': 'Fokker 70', 'value': 'F70'}
@@ -583,19 +578,18 @@ def update_autocomplete_suggestions(search_value, value):
     [State('start-iata', 'value'), State('end-iata', 'value'),
      State('sort-by-plane', 'value')]
 )
-def update_stored_routes(n_clicks, start_iata, end_iata, plane_iata):
+def update_stored_routes(n_clicks, start_iata, end_iata, plane_equipment):
     if n_clicks > 0:
-        if start_iata and end_iata and plane_iata:  # Validate IATA codes are entered
-
+        if start_iata and end_iata and plane_equipment:  # Validate IATA codes are entered
             start_id = next((airport.airportid for airport in graph.airports.values()
                              if airport.iata == start_iata), None)
             end_id = next((airport.airportid for airport in graph.airports.values()
                            if airport.iata == end_iata), None)
-            if start_id and end_id and plane_iata:
-                price = graph.co2_data[plane_iata].price_per_km
-                co2 = graph.co2_data[plane_iata].co2_emission_per_km
+            if start_id and end_id and plane_equipment:
+                price = graph.co2_data[plane_equipment].price_per_km
+                co2 = graph.co2_data[plane_equipment].co2_emission_per_km
                 routes = find_multiple_routes(
-                    graph, start_id, end_id, price, co2, plane_iata)
+                    graph, start_id, end_id, price, co2, plane_equipment)
                 return routes, ''
             else:
                 # message for invalid IATA codes
