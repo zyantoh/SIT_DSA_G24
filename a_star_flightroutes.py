@@ -214,11 +214,10 @@ def potential(graph, start_id, end_id):
 
 # Dijkstra's algorithm with weighted edge (A* algorithm) to find multiple paths
 # A* formula : f(n) = g(n) + h(n)
+
 def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane_equipment, num_routes=5):
     def a_star_with_exclusions(start_id, end_id, excluded_paths):
         try:
-            unsupported_airportid = graph.co2_data[plane_equipment].unsupported_airportid
-            unsupported_airportid = ast.literal_eval(unsupported_airportid)
             # map of vertices starting with infinity value
             distances = {airport_id: float('infinity')
                          for airport_id in graph.airports}
@@ -269,14 +268,15 @@ def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane
                     weight_of_vertex = distance + weight_of_edge
 
                     # Check if the airport is unsupported by airline
-                    invalid_airport = False
-                    for i in unsupported_airportid:
-                        if i == int(neighbor):
-                            invalid_airport = True
-                            break
+                    # invalid_airport = False
+                    # for i in unsupported_airportid:
+                    #     if i == int(neighbor):
+                    #         invalid_airport = True
+                    #         break
                     # updates neighbouring vertex distance if it took a shorter distance
 
-                    if invalid_airport==False and weight_of_vertex < distances[neighbor]:
+                    # if invalid_airport==False and weight_of_vertex < distances[neighbor]:
+                    if weight_of_vertex < distances[neighbor]:
                         # closest distance from start
                         distances[neighbor] = weight_of_vertex
                         # previous vertex path taken
@@ -300,7 +300,16 @@ def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane
     # ---------------------------------------------------------
     routes_info = []
     excluded_paths = []
+
     try:
+        # Append unsupported airports to excluded paths
+        unsupported_airportid = graph.co2_data[plane_equipment].unsupported_airportid
+        unsupported_airportid = ast.literal_eval(unsupported_airportid)
+        for i in unsupported_airportid:
+            temp = [start_id, str(i)]
+            temp2 = [str(i), end_id]
+            excluded_paths.append(temp)
+            excluded_paths.append(temp2)
         # search route based on the number of times
         for _ in range(num_routes):
             path = a_star_with_exclusions(start_id, end_id, excluded_paths)
@@ -585,6 +594,14 @@ def update_stored_routes(n_clicks, start_iata, end_iata, plane_equipment):
                              if airport.iata == start_iata), None)
             end_id = next((airport.airportid for airport in graph.airports.values()
                            if airport.iata == end_iata), None)
+            
+            # Exclude Start and End airports unsupported by airline
+            unsupported_airportid = graph.co2_data[plane_equipment].unsupported_airportid
+            unsupported_airportid = ast.literal_eval(unsupported_airportid)
+            for i in unsupported_airportid:
+                if (i == int(start_id) or i == int(end_id)):
+                    return [], 'This airline is not supported for these airports. Please choose another airline.'
+
             if start_id and end_id and plane_equipment:
                 price = graph.co2_data[plane_equipment].price_per_km
                 co2 = graph.co2_data[plane_equipment].co2_emission_per_km
