@@ -511,6 +511,8 @@ app.layout = html.Div([
     ], style={'display': 'flex', 'alignItems': 'center'}),
     html.Div(id='error-message', style={'color': 'red'}),
     dcc.Store(id='stored-routes'),  # Store component for the routes
+    dcc.Store(id='search-attempted', data=False),  # Store to track search attempts
+
 
     # flight map
     # Adjust 'height' as desired
@@ -577,51 +579,93 @@ def update_autocomplete_suggestions(search_value, value):
 
 
 @app.callback(
-    [Output('stored-routes', 'data'),
-     Output('error-message', 'children')],
+    [Output('stored-routes', 'data'), 
+     Output('error-message', 'children'),
+     Output('search-attempted', 'data')],
     [Input('find-routes', 'n_clicks')],
-    [State('start-iata', 'value'), State('end-iata', 'value'),
-     State('sort-by-plane', 'value')]
+    [State('start-iata', 'value'), State('end-iata', 'value'), State('sort-by-plane', 'value')]
 )
 def update_stored_routes(n_clicks, start_iata, end_iata, plane_iata):
-    if n_clicks > 0:
-        if start_iata and end_iata and plane_iata:  # Validate IATA codes are entered
+    search_attempted = n_clicks > 0  # Indicates whether a search has been attempted
 
+    if search_attempted:
+        if start_iata and end_iata and plane_iata:  # Validate IATA codes are entered
             start_id = next((airport.airportid for airport in graph.airports.values()
                              if airport.iata == start_iata), None)
             end_id = next((airport.airportid for airport in graph.airports.values()
                            if airport.iata == end_iata), None)
+
             if start_id and end_id and plane_iata:
                 price = graph.co2_data[plane_iata].price_per_km
                 co2 = graph.co2_data[plane_iata].co2_emission_per_km
                 routes = find_multiple_routes(
                     graph, start_id, end_id, price, co2, plane_iata)
-                return routes, ''
-            else:
-                # message for invalid IATA codes
-                return [], 'Invalid IATA codes entered.'
-        else:
-            return [], 'Please enter both start and destination IATA codes.'
-    return [], ''
+
+                if routes:  # if routes are found
+                    return routes, '', search_attempted
+                else:  # if no routes are found
+                    return [], 'No routes found for the given criteria.', search_attempted
+            else:  # message for invalid IATA codes
+                return [], 'Invalid IATA codes entered.', search_attempted
+        else:  # if IATA codes are not valid or not entered
+            return [], 'Please enter both start and destination IATA codes.', search_attempted
+    else:
+        # When the page is first loaded and no search has been performed yet
+        return [], '', False  # Returning False for search_attempted
+
+
 
 
 # Callback to update the map based on the routes data stored
 @app.callback(
-    [Output('flight-map', 'figure'),
-     Output('route-instructions', 'children')],
-    [Input('stored-routes', 'data')]
+    [Output('flight-map', 'figure'), 
+    Output('route-instructions', 'children')],
+    [Input('stored-routes', 'data'), 
+    Input('search-attempted', 'data')]
 )
-def update_map(routes_data):
+def update_map(routes_data, search_attempted):
     print("update_map called")  # Debug print statement
+
     if routes_data:
+        # Check if there are any valid routes in the data
+        if all(not route.get('route') for route in routes_data):
+            # All routes are empty, meaning no routes were found
+            no_routes_figure = go.Figure(
+                data=[go.Scattergeo()],
+                layout=go.Layout(
+                    title='No routes found. Please try different airports or parameters.',
+                    geo=dict(
+                        showland=True,
+                        landcolor='rgb(243, 243, 243)',
+                        countrycolor='rgb(204, 204, 204)',
+                        showcountries=True,
+                        showsubunits=True,
+                        showframe=False,
+                        projection=dict(
+                            type='orthographic',
+                        )
+                    )
+                )
+            )
+            return no_routes_figure, "No routes found. Please adjust your search criteria."
+        
+        # Valid routes are present, plot them
         figure = plot_routes(graph, routes_data)
         instructions = "Click on a route to see detailed information."
         return figure, instructions
+
     else:
+        if search_attempted:
+            # No routes found after search
+            title = 'No routes found. Please enter valid airport codes and search again.'
+        else:
+            # Initial state, before any search
+            title = 'Enter Airport Codes to find routes.'
+
         blank_figure = go.Figure(
             data=[go.Scattergeo()],
             layout=go.Layout(
-                title='Enter Airport Codes to find routes.',
+                title=title,
                 geo=dict(
                     showland=True,
                     landcolor='rgb(243, 243, 243)',
@@ -636,6 +680,9 @@ def update_map(routes_data):
             )
         )
         return blank_figure, ""
+
+
+
 
 # Callback to display information on a route when route is clicked on
 
