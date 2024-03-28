@@ -287,7 +287,6 @@ def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane
             print(f"An error occurred during route finding: {error}")
             return []
         # ---end of a_star_with_exclusions function---
-
     # ---------------------------------------------------------
     routes_info = []
     excluded_paths = []
@@ -576,8 +575,6 @@ def update_autocomplete_suggestions(search_value, value):
     return options, value
 
 # Callback to store the routes data
-
-
 @app.callback(
     [Output('stored-routes', 'data'), 
      Output('error-message', 'children'),
@@ -682,11 +679,7 @@ def update_map(routes_data, search_attempted):
         return blank_figure, ""
 
 
-
-
 # Callback to display information on a route when route is clicked on
-
-
 @app.callback(
     [Output('flight-info', 'children'),
      Output('route-instructions', 'children', allow_duplicate=True)],
@@ -750,8 +743,6 @@ def display_click_data(clickData, routes_data):
     return []
 
 # Callback to sort routes based on the factors available (WIP)
-
-
 @app.callback(
     Output('stored-routes', 'data', allow_duplicate=True),
     # Input('sort-by-plane', 'value'),
