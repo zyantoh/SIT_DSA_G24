@@ -420,7 +420,6 @@ def plot_routes(graph, route_infos):
     )
     return fig
 
-
 # Define the layout of the app
 app.layout = html.Div([
     html.Div([
@@ -430,9 +429,10 @@ app.layout = html.Div([
             options=[],
             search_value='',
             placeholder='Enter Source Airport',
-            style={'marginRight': '10px', 'width': '20vw', 'height': '36px',
+            style={'marginRight': '10px', 'width': '20vw', 'height': '36px',  
                    },  # Adjust marginRight
-            value=''
+            value='',
+            optionHeight = 50
         ),
 
         dcc.Dropdown(
@@ -441,7 +441,8 @@ app.layout = html.Div([
             placeholder='Enter destination airport',
             style={'marginRight': '10px', 'width': '20vw', 'height': '36px',
                    },  # Adjust marginRight
-            value=''
+            value='',
+            optionHeight = 50
 
         ),
 
@@ -450,34 +451,8 @@ app.layout = html.Div([
         html.Label('Plane: '),
         dcc.Dropdown(
             id='sort-by-plane',
-            options=[
-                {'label': 'Boeing 767', 'value': '767'},
-                {'label': 'Airbus A320neo', 'value': '32N'},
-                {'label': 'Boeing 777', 'value': '777'},
-                {'label': 'Boeing 747', 'value': '747'},
-                {'label': 'Airbus A320', 'value': '320'},
-                {'label': 'Airbus A319', 'value': '319'},
-                {'label': 'Boeing 737', 'value': '737'},
-                {'label': 'Airbus A318', 'value': '318'},
-                {'label': 'Embraer 190', 'value': 'E90'},
-                {'label': 'Airbus A350', 'value': '350'},
-                {'label': 'Airbus A330', 'value': '330'},
-                {'label': 'Boeing 787', 'value': '787'},
-                {'label': 'Airbus A321', 'value': '321'},
-                {'label': 'Airbus A321neo', 'value': '32Q'},
-                {'label': 'Airbus A380', 'value': '380'},
-                {'label': 'Airbus A340', 'value': '340'},
-                {'label': 'Boeing 787-10', 'value': '78J'},
-                {'label': 'Embraer 175', 'value': 'E75'},
-                {'label': 'Embraer 170', 'value': 'E70'},
-                {'label': 'Embraer 195', 'value': 'E95'},
-                {'label': 'Boeing 757', 'value': '757'},
-                {'label': 'Airbus A330-900neo', 'value': '339'},
-                {'label': 'Boeing 717', 'value': '717'},
-                {'label': 'Fokker 100', 'value': '100'},
-                {'label': 'Airbus A319neo', 'value': '31N'},
-                {'label': 'Fokker 70', 'value': 'F70'}
-            ],
+            options = [{'label': f"{plane.name}" ,
+                    'value': plane.equipment} for plane in graph.co2_data.values()],
             value='',
             placeholder='Choose plane',
             # Ensure this is the same width as the input boxes
@@ -573,6 +548,7 @@ def update_autocomplete_suggestions(search_value, value):
                                'value': selected_airport.iata})
 
     return options, value
+
 
 # Callback to store the routes data
 @app.callback(
