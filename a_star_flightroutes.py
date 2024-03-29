@@ -600,13 +600,6 @@ def valid_plane(start_search_value, end_search_value, start_value, end_value):
 
                 unsupported_airportid = val.unsupported_airportid
                 unsupported_airportid = ast.literal_eval(unsupported_airportid)
-                # print ('key and val')
-                # print (not_valid_id)
-                # print (not_valid_id[0])
-                # print (type(not_valid_id[0]))
-                # print(unsupported_airportid)
-                # print(type(unsupported_airportid[0]))
-                # print(ast.literal_eval(val.unsupported_airportid))
 
                 if binary_search(unsupported_airportid, int(not_valid_id[0])) == True:
                     pass
@@ -662,18 +655,20 @@ def binary_search(unsupported_airportid, id):
      State('sort-by-plane', 'value')]
 )
 def update_stored_routes(n_clicks, start_iata, end_iata, plane_equipment):
-    if n_clicks > 0:
+    search_attempted = n_clicks > 0
+
+    if search_attempted:
         if start_iata and end_iata and plane_equipment:  # Validate IATA codes are entered
             start_id = next((airport.airportid for airport in graph.airports.values()
                              if airport.iata == start_iata), None)
             end_id = next((airport.airportid for airport in graph.airports.values()
                            if airport.iata == end_iata), None)
 
-            if start_id and end_id and plane_iata:
-                price = graph.co2_data[plane_iata].price_per_km
-                co2 = graph.co2_data[plane_iata].co2_emission_per_km
+            if start_id and end_id and plane_equipment:
+                price = graph.co2_data[plane_equipment].price_per_km
+                co2 = graph.co2_data[plane_equipment].co2_emission_per_km
                 routes = find_multiple_routes(
-                    graph, start_id, end_id, price, co2, plane_iata)
+                    graph, start_id, end_id, price, co2, plane_equipment)
 
                 if routes:  # if routes are found
                     return routes, '', search_attempted
