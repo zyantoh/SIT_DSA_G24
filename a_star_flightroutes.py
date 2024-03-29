@@ -1,6 +1,6 @@
 import heapq
 import csv
-import numpy as np
+import ast
 from dash import Dash, dcc, html, Input, Output, State
 import plotly.graph_objs as go
 from math import radians, cos, sin, asin, sqrt
@@ -44,12 +44,12 @@ class Route:
 
 
 class Co2:
-    def __init__(self, name, equipment, icao, co2_emission_per_km, price_per_km):
+    def __init__(self, name, equipment, co2_emission_per_km, price_per_km, unsupported_airportid):
         self.name = name
         self.equipment = equipment
-        self.icao = icao
         self.co2_emission_per_km = float(co2_emission_per_km)
         self.price_per_km = float(price_per_km)
+        self.unsupported_airportid = unsupported_airportid
 
 
 class Graph:
@@ -215,9 +215,11 @@ def potential(graph, start_id, end_id):
 
 # Dijkstra's algorithm with weighted edge (A* algorithm) to find multiple paths
 # A* formula : f(n) = g(n) + h(n)
-def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane_iata, num_routes=5):
+
+def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane_equipment, num_routes=5):
     def a_star_with_exclusions(start_id, end_id, excluded_paths):
         try:
+
             # map of vertices starting with infinity value
             distances = {airport_id: float('infinity')
                          for airport_id in graph.airports}
@@ -266,7 +268,9 @@ def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane
                     distance = current_distance + \
                         potential(graph, current_vertex, neighbor)
                     weight_of_vertex = distance + weight_of_edge
+
                     # updates neighbouring vertex distance if it took a shorter distance
+
                     if weight_of_vertex < distances[neighbor]:
                         # closest distance from start
                         distances[neighbor] = weight_of_vertex
@@ -290,7 +294,16 @@ def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane
     # ---------------------------------------------------------
     routes_info = []
     excluded_paths = []
+
     try:
+        # Append unsupported airports to excluded paths
+        unsupported_airportid = graph.co2_data[plane_equipment].unsupported_airportid
+        unsupported_airportid = ast.literal_eval(unsupported_airportid)
+        for i in unsupported_airportid:
+            temp = [start_id, str(i)]
+            temp2 = [str(i), end_id]
+            excluded_paths.append(temp)
+            excluded_paths.append(temp2)
         # search route based on the number of times
         for _ in range(num_routes):
             path = a_star_with_exclusions(start_id, end_id, excluded_paths)
@@ -311,7 +324,7 @@ def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane
             # Use the entire route path and the graph
             total_co2 = estimate_co2(graph, path, co2_per_km)
             # Add the path, distance, and cost, co2 to the routes_info
-            plane_name = graph.co2_data[plane_iata].name
+            plane_name = graph.co2_data[plane_equipment].name
 
             routes_info.append({
                 'route': path,
@@ -319,7 +332,7 @@ def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane
                 'cost': total_cost,
                 'environmental impact': total_co2,
                 'plane name': plane_name,
-                'plane iata': plane_iata
+                'plane iata': plane_equipment
             })
 
             # Add the edges of the path to the excluded_paths to prevent reuse
@@ -333,7 +346,7 @@ def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane
 # Create the Dash app
 app = Dash(__name__)
 graph = Graph()
-load_data(graph, 'airports.csv', 'routes.csv', 'planes_co2_price.csv')
+load_data(graph, 'airports.csv', 'routes.csv', 'new_planes_co2_price.csv')
 
 # Function to generate the figure with all routes
 
@@ -420,6 +433,7 @@ def plot_routes(graph, route_infos):
     )
     return fig
 
+
 # Define the layout of the app
 app.layout = html.Div([
     html.Div([
@@ -429,10 +443,10 @@ app.layout = html.Div([
             options=[],
             search_value='',
             placeholder='Enter Source Airport',
-            style={'marginRight': '10px', 'width': '20vw', 'height': '36px',  
+            style={'marginRight': '10px', 'width': '20vw', 'height': '36px',
                    },  # Adjust marginRight
             value='',
-            optionHeight = 50
+            optionHeight=50
         ),
 
         dcc.Dropdown(
@@ -442,7 +456,7 @@ app.layout = html.Div([
             style={'marginRight': '10px', 'width': '20vw', 'height': '36px',
                    },  # Adjust marginRight
             value='',
-            optionHeight = 50
+            optionHeight=50
 
         ),
 
@@ -451,10 +465,11 @@ app.layout = html.Div([
         html.Label('Plane: '),
         dcc.Dropdown(
             id='sort-by-plane',
-            options = [{'label': f"{plane.name}" ,
-                    'value': plane.equipment} for plane in graph.co2_data.values()],
+            options=[],
             value='',
             placeholder='Choose plane',
+            disabled=True,
+            clearable=True,
             # Ensure this is the same width as the input boxes
             style={'width': '12vw', 'padding-left': '20px'}
 
@@ -485,7 +500,8 @@ app.layout = html.Div([
     ], style={'display': 'flex', 'alignItems': 'center'}),
     html.Div(id='error-message', style={'color': 'red'}),
     dcc.Store(id='stored-routes'),  # Store component for the routes
-    dcc.Store(id='search-attempted', data=False),  # Store to track search attempts
+    # Store to track search attempts
+    dcc.Store(id='search-attempted', data=False),
 
 
     # flight map
@@ -550,19 +566,104 @@ def update_autocomplete_suggestions(search_value, value):
     return options, value
 
 
-# Callback to store the routes data
 @app.callback(
-    [Output('stored-routes', 'data'), 
+    [Output('sort-by-plane', 'options'), Output('sort-by-plane', 'disabled')],
+    [Input('start-iata', 'value'), Input('end-iata', 'value')],
+    [State('start-iata', 'value'), State('end-iata', 'value')]
+)
+def valid_plane(start_search_value, end_search_value, start_value, end_value):
+    options = []
+    # holds airportid
+    not_valid_id = []
+    # check if start and end point has been keyed in
+    # print('callback called')
+    # print('brginning')
+    # print(start_value)
+    # print(end_value)
+    if start_value != '' and end_value != '' and start_value is not None and end_value is not None:
+
+        for i in graph.airports.values():
+            if start_value == i.iata:
+                not_valid_id.append(i.airportid)
+            if end_value == i.iata:
+                not_valid_id.append(i.airportid)
+
+        if len(not_valid_id) == 2:
+            print(not_valid_id)
+            # key=plane equipment, val = row list related to equipment
+            for key, val in graph.co2_data.items():
+
+                temp_dict = {}
+
+                if not not_valid_id[0]:
+                    break
+
+                unsupported_airportid = val.unsupported_airportid
+                unsupported_airportid = ast.literal_eval(unsupported_airportid)
+                # print ('key and val')
+                # print (not_valid_id)
+                # print (not_valid_id[0])
+                # print (type(not_valid_id[0]))
+                # print(unsupported_airportid)
+                # print(type(unsupported_airportid[0]))
+                # print(ast.literal_eval(val.unsupported_airportid))
+
+                if binary_search(unsupported_airportid, int(not_valid_id[0])) == True:
+                    pass
+
+                elif binary_search(unsupported_airportid, int(not_valid_id[1])) == True:
+                    pass
+
+                else:
+
+                    temp_dict['label'] = val.name
+                    temp_dict['value'] = key
+                    options.append(temp_dict)
+
+            return options, False
+    # print ('no  values entered')
+    # print(options)
+    # print(not_valid_id)
+    return options, True
+
+
+def binary_search(unsupported_airportid, id):
+    low = 0
+    high = len(unsupported_airportid) - 1
+    mid = 0
+    while low <= high:
+
+        mid = (high + low) // 2
+
+        # If x is greater, ignore left half
+        if unsupported_airportid[mid] < id:
+            low = mid + 1
+
+        # If x is smaller, ignore right half
+        elif unsupported_airportid[mid] > id:
+            high = mid - 1
+
+        # means x is present at mid
+        else:
+            return True
+
+    # If we reach here, then the element was not present
+    return -1
+
+# Callback to store the routes data
+
+
+@app.callback(
+    [Output('stored-routes', 'data'),
      Output('error-message', 'children'),
      Output('search-attempted', 'data')],
     [Input('find-routes', 'n_clicks')],
-    [State('start-iata', 'value'), State('end-iata', 'value'), State('sort-by-plane', 'value')]
+    [State('start-iata', 'value'), State('end-iata', 'value'),
+     State('sort-by-plane', 'value')]
 )
-def update_stored_routes(n_clicks, start_iata, end_iata, plane_iata):
-    search_attempted = n_clicks > 0  # Indicates whether a search has been attempted
-
-    if search_attempted:
-        if start_iata and end_iata and plane_iata:  # Validate IATA codes are entered
+def update_stored_routes(n_clicks, start_iata, end_iata, plane_equipment):
+    if n_clicks > 0:
+        if start_iata and end_iata and plane_equipment:  # Validate IATA codes are entered
             start_id = next((airport.airportid for airport in graph.airports.values()
                              if airport.iata == start_iata), None)
             end_id = next((airport.airportid for airport in graph.airports.values()
@@ -587,14 +688,12 @@ def update_stored_routes(n_clicks, start_iata, end_iata, plane_iata):
         return [], '', False  # Returning False for search_attempted
 
 
-
-
 # Callback to update the map based on the routes data stored
 @app.callback(
-    [Output('flight-map', 'figure'), 
-    Output('route-instructions', 'children')],
-    [Input('stored-routes', 'data'), 
-    Input('search-attempted', 'data')]
+    [Output('flight-map', 'figure'),
+     Output('route-instructions', 'children')],
+    [Input('stored-routes', 'data'),
+     Input('search-attempted', 'data')]
 )
 def update_map(routes_data, search_attempted):
     print("update_map called")  # Debug print statement
@@ -621,7 +720,7 @@ def update_map(routes_data, search_attempted):
                 )
             )
             return no_routes_figure, "No routes found. Please adjust your search criteria."
-        
+
         # Valid routes are present, plot them
         figure = plot_routes(graph, routes_data)
         instructions = "Click on a route to see detailed information."
@@ -719,6 +818,8 @@ def display_click_data(clickData, routes_data):
     return []
 
 # Callback to sort routes based on the factors available (WIP)
+
+
 @app.callback(
     Output('stored-routes', 'data', allow_duplicate=True),
     # Input('sort-by-plane', 'value'),
