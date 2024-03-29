@@ -21,6 +21,11 @@ for i in range(1, 15):
         for j in random.sample(range(1, len(airport)),450):
             new_list1.append(airport[j])
             # new_list2.append(icao[j])
+            print(new_list1)
+        new_list1 = sorted(new_list1)
+        
+        # new_list1 = [eval(i) for i in new_list1]
+        # new_list1 = new_list1.sort()
         new_df = pd.DataFrame({'airport': [new_list1]})
         new_df.to_csv("data.csv",mode="a", index=False,header=False)
     except ValueError:
