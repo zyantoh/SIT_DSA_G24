@@ -218,6 +218,7 @@ def potential(graph, start_id, end_id):
 def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane_equipment, num_routes=5):
     def a_star_with_exclusions(start_id, end_id, excluded_paths):
         try:
+            
             # map of vertices starting with infinity value
             distances = {airport_id: float('infinity')
                          for airport_id in graph.airports}
@@ -267,15 +268,8 @@ def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane
                         potential(graph, current_vertex, neighbor)
                     weight_of_vertex = distance + weight_of_edge
 
-                    # Check if the airport is unsupported by airline
-                    # invalid_airport = False
-                    # for i in unsupported_airportid:
-                    #     if i == int(neighbor):
-                    #         invalid_airport = True
-                    #         break
-                    # updates neighbouring vertex distance if it took a shorter distance
+                    #updates neighbouring vertex distance if it took a shorter distance
 
-                    # if invalid_airport==False and weight_of_vertex < distances[neighbor]:
                     if weight_of_vertex < distances[neighbor]:
                         # closest distance from start
                         distances[neighbor] = weight_of_vertex
@@ -576,10 +570,10 @@ def valid_plane(start_search_value, end_search_value, start_value, end_value):
     #holds airportid
     not_valid_id = []
     #check if start and end point has been keyed in
-    print('callback called')
-    print('brginning')
-    print(start_value)
-    print(end_value)
+    # print('callback called')
+    # print('brginning')
+    # print(start_value)
+    # print(end_value)
     if start_value != '' and end_value != '' and start_value is not None and end_value is not None:
 
         for i in graph.airports.values():
@@ -587,41 +581,69 @@ def valid_plane(start_search_value, end_search_value, start_value, end_value):
                 not_valid_id.append(i.airportid)
             if end_value == i.iata:
                 not_valid_id.append(i.airportid)
-
-        #key=plane equipment, val = row list related to equipment 
-        for key, val in graph.co2_data.items():
-
-            temp_dict = {}
-
-            
-            if not not_valid_id[0]:
-                break
-
-            unsupported_airportid = val.unsupported_airportid
-            unsupported_airportid = ast.literal_eval(unsupported_airportid)
-            print ('key and val')
-            print (not_valid_id)
-            print (not_valid_id[0])
-            #print (type(not_valid_id[0]))
-            #print(unsupported_airportid)
-            #print(type(unsupported_airportid[0]))
-            if int(not_valid_id[0]) in ast.literal_eval(val.unsupported_airportid):
-                pass
-            
-            elif int(not_valid_id[1]) in ast.literal_eval(val.unsupported_airportid):
-                pass
-
-            else:
-
-                temp_dict['label'] = val.name
-                temp_dict['value'] = key
-                options.append(temp_dict)
-        return options, False
-    print ('no  values entered')
-    print(options)
-    print(not_valid_id)
-    return options, True
         
+        if len(not_valid_id) == 2:
+            print(not_valid_id)
+            #key=plane equipment, val = row list related to equipment 
+            for key, val in graph.co2_data.items():
+
+                temp_dict = {}
+
+                
+                if not not_valid_id[0]:
+                    break
+
+                unsupported_airportid = val.unsupported_airportid
+                unsupported_airportid = ast.literal_eval(unsupported_airportid)
+                # print ('key and val')
+                # print (not_valid_id)
+                # print (not_valid_id[0])
+                #print (type(not_valid_id[0]))
+                #print(unsupported_airportid)
+                # print(type(unsupported_airportid[0]))
+                # print(ast.literal_eval(val.unsupported_airportid))
+                
+                
+                if binary_search(unsupported_airportid, int(not_valid_id[0])) == True:
+                    pass
+                
+                elif binary_search(unsupported_airportid, int(not_valid_id[1])) == True:
+                    pass
+
+                else:
+
+                    temp_dict['label'] = val.name
+                    temp_dict['value'] = key
+                    options.append(temp_dict)
+
+            return options, False
+    # print ('no  values entered')
+    # print(options)
+    # print(not_valid_id)
+    return options, True
+
+def binary_search(unsupported_airportid, id):
+    low = 0
+    high = len(unsupported_airportid) - 1
+    mid = 0
+    while low <= high:
+ 
+        mid = (high + low) // 2
+ 
+        # If x is greater, ignore left half
+        if unsupported_airportid[mid] < id:
+            low = mid + 1
+ 
+        # If x is smaller, ignore right half
+        elif unsupported_airportid[mid] > id:
+            high = mid - 1
+ 
+        # means x is present at mid
+        else:
+            return True
+ 
+    # If we reach here, then the element was not present
+    return -1
 
 # Callback to store the routes data
 
@@ -641,12 +663,12 @@ def update_stored_routes(n_clicks, start_iata, end_iata, plane_equipment):
             end_id = next((airport.airportid for airport in graph.airports.values()
                            if airport.iata == end_iata), None)
             
-            # Exclude Start and End airports unsupported by airline
-            unsupported_airportid = graph.co2_data[plane_equipment].unsupported_airportid
-            unsupported_airportid = ast.literal_eval(unsupported_airportid)
-            for i in unsupported_airportid:
-                if (i == int(start_id) or i == int(end_id)):
-                    return [], 'This airline is not supported for these airports. Please choose another airline.'
+            # # Exclude Start and End airports unsupported by airline
+            # unsupported_airportid = graph.co2_data[plane_equipment].unsupported_airportid
+            # unsupported_airportid = ast.literal_eval(unsupported_airportid)
+            # for i in unsupported_airportid:
+            #     if (i == int(start_id) or i == int(end_id)):
+            #         return [], 'This airline is not supported for these airports. Please choose another airline.'
 
             if start_id and end_id and plane_equipment:
                 price = graph.co2_data[plane_equipment].price_per_km
