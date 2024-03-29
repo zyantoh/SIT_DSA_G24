@@ -436,7 +436,7 @@ def plot_routes(graph, route_infos):
         autosize=True
     )
     return fig
-
+#options for plane dropdown list
 
 # Define the layout of the app
 app.layout = html.Div([
@@ -467,24 +467,11 @@ app.layout = html.Div([
         html.Label('Plane: '),
         dcc.Dropdown(
             id='sort-by-plane',
-            options=[
-                {'label': 'Boeing 767', 'value': '767'},
-                {'label': 'Airbus A320neo', 'value': '32N'},
-                {'label': 'Boeing 777', 'value': '777'},
-                {'label': 'Boeing 747', 'value': '747'},
-                {'label': 'Airbus A320', 'value': '320'},
-                {'label': 'Airbus A319', 'value': '319'},
-                {'label': 'Boeing 737', 'value': '737'},
-                {'label': 'Airbus A330', 'value': '330'},
-                {'label': 'Embraer 175', 'value': 'E75'},
-                {'label': 'Embraer 170', 'value': 'E70'},
-                {'label': 'Embraer 195', 'value': 'E95'},
-                {'label': 'Fokker 100', 'value': '100'},
-                {'label': 'Airbus A319neo', 'value': '31N'},
-                {'label': 'Fokker 70', 'value': 'F70'}
-            ],
+            options = [],
             value='',
             placeholder='Choose plane',
+            disabled=True,
+            clearable=True,
             # Ensure this is the same width as the input boxes
             style={'width': '12vw', 'padding-left': '20px'}
 
@@ -574,8 +561,67 @@ def update_autocomplete_suggestions(search_value, value):
             # Add the currently selected option to the options list
             options.insert(0, {'label': f"{selected_airport.name} ({selected_airport.iata}) [{selected_airport.city}, {selected_airport.country}]",
                                'value': selected_airport.iata})
+        
+        
 
     return options, value
+
+@app.callback(
+    [Output('sort-by-plane', 'options'), Output('sort-by-plane', 'disabled')],
+    [Input('start-iata', 'value'), Input('end-iata', 'value')],
+    [State('start-iata', 'value'), State('end-iata', 'value')]
+)
+def valid_plane(start_search_value, end_search_value, start_value, end_value):
+    options = []
+    #holds airportid
+    not_valid_id = []
+    #check if start and end point has been keyed in
+    print('callback called')
+    print('brginning')
+    print(start_value)
+    print(end_value)
+    if start_value != '' and end_value != '' and start_value is not None and end_value is not None:
+
+        for i in graph.airports.values():
+            if start_value == i.iata:
+                not_valid_id.append(i.airportid)
+            if end_value == i.iata:
+                not_valid_id.append(i.airportid)
+
+        #key=plane equipment, val = row list related to equipment 
+        for key, val in graph.co2_data.items():
+
+            temp_dict = {}
+
+            
+            if not not_valid_id[0]:
+                break
+
+            unsupported_airportid = val.unsupported_airportid
+            unsupported_airportid = ast.literal_eval(unsupported_airportid)
+            print ('key and val')
+            print (not_valid_id)
+            print (not_valid_id[0])
+            #print (type(not_valid_id[0]))
+            #print(unsupported_airportid)
+            #print(type(unsupported_airportid[0]))
+            if int(not_valid_id[0]) in ast.literal_eval(val.unsupported_airportid):
+                pass
+            
+            elif int(not_valid_id[1]) in ast.literal_eval(val.unsupported_airportid):
+                pass
+
+            else:
+
+                temp_dict['label'] = val.name
+                temp_dict['value'] = key
+                options.append(temp_dict)
+        return options, False
+    print ('no  values entered')
+    print(options)
+    print(not_valid_id)
+    return options, True
+        
 
 # Callback to store the routes data
 
@@ -612,7 +658,7 @@ def update_stored_routes(n_clicks, start_iata, end_iata, plane_equipment):
                 # message for invalid IATA codes
                 return [], 'Invalid IATA codes entered.'
         else:
-            return [], 'Please enter both start and destination IATA codes.'
+            return [], 'Please enter both start, destination IATA codes and plane type.'
     return [], ''
 
 
