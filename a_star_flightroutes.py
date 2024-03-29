@@ -439,7 +439,6 @@ app.layout = html.Div([
     html.Div([
         dcc.Dropdown(
             id='start-iata',
-
             options=[],
             search_value='',
             placeholder='Enter Source Airport',
@@ -457,7 +456,6 @@ app.layout = html.Div([
                    },  # Adjust marginRight
             value='',
             optionHeight=50
-
         ),
 
         html.Div(id="autocomplete-output"),
@@ -472,7 +470,6 @@ app.layout = html.Div([
             clearable=True,
             # Ensure this is the same width as the input boxes
             style={'width': '12vw', 'padding-left': '20px'}
-
         ),
 
         html.Button(
@@ -524,7 +521,6 @@ app.layout = html.Div([
         'top': '35vh',  # Adjusts the position from the top
         'margin-right': '20px',  # Adjusts the margin from the right
     }),
-
 ])
 
 
@@ -561,8 +557,7 @@ def update_autocomplete_suggestions(search_value, value):
         if selected_airport:
             # Add the currently selected option to the options list
             options.insert(0, {'label': f"{selected_airport.name} ({selected_airport.iata}) [{selected_airport.city}, {selected_airport.country}]",
-                               'value': selected_airport.iata})
-
+                                'value': selected_airport.iata})
     return options, value
 
 
@@ -576,12 +571,7 @@ def valid_plane(start_search_value, end_search_value, start_value, end_value):
     # holds airportid
     not_valid_id = []
     # check if start and end point has been keyed in
-    # print('callback called')
-    # print('brginning')
-    # print(start_value)
-    # print(end_value)
     if start_value != '' and end_value != '' and start_value is not None and end_value is not None:
-
         for i in graph.airports.values():
             if start_value == i.iata:
                 not_valid_id.append(i.airportid)
@@ -597,55 +587,42 @@ def valid_plane(start_search_value, end_search_value, start_value, end_value):
 
                 if not not_valid_id[0]:
                     break
-
                 unsupported_airportid = val.unsupported_airportid
                 unsupported_airportid = ast.literal_eval(unsupported_airportid)
-
                 if binary_search(unsupported_airportid, int(not_valid_id[0])) == True:
                     pass
-
                 elif binary_search(unsupported_airportid, int(not_valid_id[1])) == True:
                     pass
-
                 else:
-
                     temp_dict['label'] = val.name
                     temp_dict['value'] = key
                     options.append(temp_dict)
-
             return options, False
-    # print ('no  values entered')
-    # print(options)
-    # print(not_valid_id)
     return options, True
 
 
+# Searches list of unsupported airports
 def binary_search(unsupported_airportid, id):
     low = 0
     high = len(unsupported_airportid) - 1
     mid = 0
     while low <= high:
-
         mid = (high + low) // 2
-
-        # If x is greater, ignore left half
+        # Pivot is greater, ignore left half
         if unsupported_airportid[mid] < id:
             low = mid + 1
-
-        # If x is smaller, ignore right half
+        # Pivot is smaller, ignore right half
         elif unsupported_airportid[mid] > id:
             high = mid - 1
-
-        # means x is present at mid
+        # Pivot present at mid
         else:
             return True
 
-    # If we reach here, then the element was not present
+    # Element not present
     return -1
 
+
 # Callback to store the routes data
-
-
 @app.callback(
     [Output('stored-routes', 'data'),
      Output('error-message', 'children'),
@@ -658,24 +635,26 @@ def update_stored_routes(n_clicks, start_iata, end_iata, plane_equipment):
     search_attempted = n_clicks > 0
 
     if search_attempted:
-        if start_iata and end_iata and plane_equipment:  # Validate IATA codes are entered
+        # Validate entered IATA codes and plane type
+        if start_iata and end_iata and plane_equipment:
             start_id = next((airport.airportid for airport in graph.airports.values()
                              if airport.iata == start_iata), None)
             end_id = next((airport.airportid for airport in graph.airports.values()
                            if airport.iata == end_iata), None)
 
-            if start_id and end_id and plane_equipment:
-                price = graph.co2_data[plane_equipment].price_per_km
-                co2 = graph.co2_data[plane_equipment].co2_emission_per_km
-                routes = find_multiple_routes(
-                    graph, start_id, end_id, price, co2, plane_equipment)
+            # Validation for same starting and ending airports
+            if start_id == end_id:
+                return [], 'Starting and ending airports are the same.', search_attempted
+            
+            # Find multiple routes
+            price = graph.co2_data[plane_equipment].price_per_km
+            co2 = graph.co2_data[plane_equipment].co2_emission_per_km
+            routes = find_multiple_routes(graph, start_id, end_id, price, co2, plane_equipment)
 
-                if routes:  # if routes are found
-                    return routes, '', search_attempted
-                else:  # if no routes are found
-                    return [], 'No routes found for the given criteria.', search_attempted
-            else:  # message for invalid IATA codes
-                return [], 'Invalid IATA codes entered.', search_attempted
+            if routes:  # if routes are found, return it
+                return routes, '', search_attempted
+            else:  # if no routes are found
+                return [], 'No routes found for the given criteria.', search_attempted
         else:  # if IATA codes are not valid or not entered
             return [], 'Please enter both start and destination IATA codes.', search_attempted
     else:
