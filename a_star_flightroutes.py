@@ -6,12 +6,11 @@ import plotly.graph_objs as go
 from dash import Dash, dcc, html, Input, Output, State
 from math import radians, cos, sin, asin, sqrt
 
+
 # Define the Airport, Route, and Graph classes
-
-
 class Airport:
     def __init__(self, airportid, name, city, country, iata, icao, latitude, longitude, altitude, timezone, dst, tz_database_timezone, type, source):
-        self.airportid = airportid  # Ensure this matches the CSV header for airport ID
+        self.airportid = airportid
         self.name = name
         self.city = city
         self.country = country
@@ -35,9 +34,8 @@ class Route:
         self.airline = airline
         self.airlineID = airlineID
         self.sourceAirport = sourceAirport
-        self.sourceAirportID = sourceAirportID  # Ensure this matches the CSV header
+        self.sourceAirportID = sourceAirportID
         self.destinationAirport = destinationAirport
-        # Ensure this matches the CSV header
         self.destinationAirportID = destinationAirportID
         self.codeshare = codeshare
         self.stops = int(stops)
@@ -64,7 +62,6 @@ class Graph:
     def add_airport(self, airport):
         # Add airportid (key): airport data (val) in dictionary of airports
         self.airports[airport.airportid] = airport
-        # give airport a adjacency_list. mapped in airportid:[]
         if airport.airportid not in self.adjacency_list:
             self.adjacency_list[airport.airportid] = []
 
@@ -86,7 +83,7 @@ class Graph:
 
 # Load data function
 def load_data(graph, airports_filename, routes_filename, co2_filename):
-    # Load airports data
+    # Load airport data
     try:
         with open(airports_filename, 'r', encoding='utf-8') as airports_file:
             csv_reader = csv.DictReader(airports_file)
@@ -144,8 +141,8 @@ def load_data(graph, airports_filename, routes_filename, co2_filename):
         print(f"Unexpected error when loading CO2 data: {error}")
 
 
+# Haversine formula to calculate distance between two points on the surface of the sphere
 def haversine(lat1, lon1, lat2, lon2):
-    # Haversine formula to calculate distance between two points on the surface of the sphere
     # Calculate the great circle distance in kilometers between two points on the earth specified in decimal degrees.
     # Convert decimal degrees to radians
     try:
