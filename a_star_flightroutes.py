@@ -526,7 +526,7 @@ app.layout = html.Div([
                 options=[],
                 placeholder='Exclude airport',
                 style={'marginRight': '10px',
-                       'width': '12vw', 'height': '36px'},
+                       'width': '20vw', 'height': '36px'},
                 value='',
                 optionHeight=50
             ),
