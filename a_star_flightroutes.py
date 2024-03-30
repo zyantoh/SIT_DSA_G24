@@ -1,8 +1,9 @@
 import heapq
 import csv
 import ast
-from dash import Dash, dcc, html, Input, Output, State
+import time
 import plotly.graph_objs as go
+from dash import Dash, dcc, html, Input, Output, State
 from math import radians, cos, sin, asin, sqrt
 
 # Define the Airport, Route, and Graph classes
@@ -170,6 +171,10 @@ def estimate_cost(distance, cost_per_km):
     return distance * cost_per_km
 
 
+def estimate_time(total_distance, cruise_speed):
+    hours, remainder = divmod(total_distance/cruise_speed, 1)
+    minutes = int(remainder * 60)
+    return str(int(hours)) + " hr(s) " + str(minutes) + " min(s)"
 
 
 def estimate_co2(graph, route, default_co2_emission_per_km):
@@ -324,17 +329,19 @@ def find_multiple_routes(graph, start_id, end_id, exclude_id, cost_per_km, co2_p
                                ].latitude, graph.airports[path[i+1]].longitude
             ) for i in range(len(path) - 1))
 
-            # Estimate the total cost for the route
+            # Estimate total cost for route
             total_cost = estimate_cost(total_distance, cost_per_km)
-            # Estimate time for route
-            total_time = total_distance / cruise_speed
 
-            # Fix estimate total co2 emission
-            # Use the entire route path and the graph
+            # Estimate total time for route
+            total_time = estimate_time(total_distance, cruise_speed)
+
+            # Estimate C02 usage for route
             total_co2 = estimate_co2(graph, path, co2_per_km)
-            # Add the path, distance, and cost, co2 to the routes_info
+
+            # Get plane name
             plane_name = graph.co2_data[plane_equipment].name
 
+            # Add the path, distance, and cost, co2 to the routes_info
             routes_info.append({
                 'route': path,
                 'distance': total_distance,
@@ -824,29 +831,27 @@ def display_click_data(clickData, routes_data):
 
             # Add Route information (Plane Type, Distance, Cost, C02 Emissions, Time)
             info.append(html.Div(f"Plane Flown: {route_info['plane name']} ({route_info['plane iata']})"))
-            info.append(html.Div(f"Total Distance: {route_info['distance']:.2f} KM"))
+            info.append(html.Div(f"Total Distance: {route_info['distance']:.2f} km"))
             info.append(html.Div(f"Estimated Cost: ${route_info['cost']:.2f}"))
-            info.append(html.Div(f"Estimated Time: {route_info['cruise_speed']:.2f} hours"))
-            info.append(html.Div(f"Total CO2 Emissions: {route_info['environmental impact']:.2f} KG"))
+            info.append(html.Div(f"Estimated Time: {route_info['estimated time']}"))
+            info.append(html.Div(f"Total CO2 Emissions: {route_info['environmental impact']:.2f} kg"))
 
             print("info displayed")
             return html.Div(info, style={'white-space': 'pre-line'}), ""
-
     return []
 
-# Callback to sort routes based on the factors available (WIP)
 
-
+# Callback to sort routes based on the factors available
 @app.callback(
     Output('stored-routes', 'data', allow_duplicate=True),
-    # Input('sort-by-plane', 'value'),
     Input('sort-by-dropdown', 'value'),
     Input('stored-routes', 'data'),
-    prevent_initial_call=True  # dont callback if dropdown is not touched at the start
+    prevent_initial_call=True
 )
-def sort_routes(chosen_value, routes_data):
 
-    # choose sorting factor according to dropdown selection first (Enviro. impact yet to be added)
+
+def sort_routes(chosen_value, routes_data):
+    # choose sorting factor according to dropdown selection first
     if chosen_value == 'Distance':
         sort_factor = 'distance'
     elif chosen_value == 'Cost':
