@@ -435,6 +435,13 @@ def plot_routes(graph, route_infos):
     fig.update_layout(
         title=title_text,
         showlegend=True,
+        legend=dict(
+            orientation="h",
+            x=0,  # Adjusts the x position to the left
+            y=1,  # Adjusts the y position to be above the graph
+            xanchor='left',  # Anchors the legend to the left side
+
+        ),
         geo=dict(
             scope="world",
             showland=True,
@@ -542,8 +549,8 @@ app.layout = html.Div([
     # listed routes and instructions beside flight map
     html.Div(id='route-instructions', style={
         'position': 'absolute',
-        'right': '0px',  # Adjusts the position to the right
-        'top': '30vh',  # Adjusts the position from the top
+        'left': '4vw',  # Adjusts the position to the right
+        'top': '25vh',  # Adjusts the position from the top
         'margin-right': '20px',  # Adjusts the margin from the right
     }),
 
@@ -551,8 +558,8 @@ app.layout = html.Div([
     html.Div(id='flight-info', style={
         'hidden': 'true',
         'position': 'absolute',
-        'right': '0px',  # Adjusts the position to the right
-        'top': '35vh',  # Adjusts the position from the top
+        'left': '4vw',  # Adjusts the position to the right
+        'top': '25vh',  # Adjusts the position from the top
         'margin-right': '20px',  # Adjusts the margin from the right
     }),
 ])
@@ -691,7 +698,8 @@ def update_stored_routes(n_clicks, start_iata, end_iata, exclude_iata, plane_equ
             price = graph.co2_data[plane_equipment].price_per_km
             co2 = graph.co2_data[plane_equipment].co2_emission_per_km
             cruise_speed = graph.co2_data[plane_equipment].cruise_speed
-            routes = find_multiple_routes(graph, start_id, end_id, exclude_id, price, co2, cruise_speed, plane_equipment)
+            routes = find_multiple_routes(
+                graph, start_id, end_id, exclude_id, price, co2, cruise_speed, plane_equipment)
 
             if routes:  # if routes are found, return it
                 return routes, '', search_attempted
@@ -827,11 +835,16 @@ def display_click_data(clickData, routes_data):
             info.append(html.Br())
 
             # Add Route information (Plane Type, Distance, Cost, C02 Emissions, Time)
-            info.append(html.Div(f"Plane Flown: {route_info['plane name']} ({route_info['plane iata']})"))
-            info.append(html.Div(f"Total Distance: {route_info['distance']:.2f} km"))
-            info.append(html.Div(f"Estimated Cost: ${route_info['cost']:.2f}"))
-            info.append(html.Div(f"Estimated Time: {route_info['estimated time']}"))
-            info.append(html.Div(f"Total CO2 Emissions: {route_info['environmental impact']:.2f} kg"))
+            info.append(
+                html.Div((f"Plane Flown: {route_info['plane name']} ({route_info['plane iata']})"))),
+            info.append(
+                html.Div(f"Total Distance: {route_info['distance']:.2f} km")),
+            info.append(
+                html.Div(f"Estimated Cost: ${route_info['cost']:.2f}"))
+            info.append(
+                (html.Div(f"Estimated Time: {route_info['estimated time']}")))
+            info.append(
+                (html.Div(f"Total CO2 Emissions: {route_info['environmental impact']:.2f} kg")))
 
             print("info displayed")
             return html.Div(info, style={'white-space': 'pre-line'}), ""
@@ -845,8 +858,6 @@ def display_click_data(clickData, routes_data):
     Input('stored-routes', 'data'),
     prevent_initial_call=True
 )
-
-
 def sort_routes(chosen_value, routes_data):
     # choose sorting factor according to dropdown selection first
     if chosen_value == 'Distance':
