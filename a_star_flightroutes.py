@@ -625,7 +625,6 @@ def valid_plane(start_search_value, end_search_value, start_value, end_value):
                 not_valid_id.append(i.airportid)
 
         if len(not_valid_id) == 2:
-            print(not_valid_id)
             # key=plane equipment, val = row list related to equipment
             for key, val in graph.co2_data.items():
 
@@ -715,13 +714,12 @@ def update_stored_routes(n_clicks, start_iata, end_iata, exclude_iata, plane_equ
 # Callback to update the map based on the routes data stored
 @app.callback(
     [Output('flight-map', 'figure'),
-     Output('route-instructions', 'children')],
+     Output('route-instructions', 'children'),
+     Output('flight-info', 'children')],
     [Input('stored-routes', 'data'),
      Input('search-attempted', 'data')]
 )
 def update_map(routes_data, search_attempted):
-    print("update_map called")  # Debug print statement
-
     if routes_data:
         # Check if there are any valid routes in the data
         if all(not route.get('route') for route in routes_data):
@@ -748,7 +746,8 @@ def update_map(routes_data, search_attempted):
         # Valid routes are present, plot them
         figure = plot_routes(graph, routes_data)
         instructions = "Click on a route to see detailed information."
-        return figure, instructions
+        flight_info = ""
+        return figure, instructions, flight_info
 
     else:
         if search_attempted:
@@ -775,12 +774,12 @@ def update_map(routes_data, search_attempted):
                 )
             )
         )
-        return blank_figure, ""
+        return blank_figure, "", ""
 
 
 # Callback to display information on a route when route is clicked on
 @app.callback(
-    [Output('flight-info', 'children'),
+    [Output('flight-info', 'children', allow_duplicate=True),
      Output('route-instructions', 'children', allow_duplicate=True)],
     [Input('flight-map', 'clickData')],
     [State('stored-routes', 'data')],
@@ -789,7 +788,6 @@ def update_map(routes_data, search_attempted):
 def display_click_data(clickData, routes_data):
     if clickData:
         points = clickData.get('points', [])
-        print("clicked")
         if points:
             # assuming curveNumber is used to index the routes
             route_index = points[0]['curveNumber']
@@ -846,7 +844,6 @@ def display_click_data(clickData, routes_data):
             info.append(
                 (html.Div(f"Total CO2 Emissions: {route_info['environmental impact']:.2f} kg")))
 
-            print("info displayed")
             return html.Div(info, style={'white-space': 'pre-line'}), ""
     return []
 
