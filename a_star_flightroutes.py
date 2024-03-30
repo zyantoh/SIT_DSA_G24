@@ -44,11 +44,12 @@ class Route:
 
 
 class Co2:
-    def __init__(self, name, equipment, co2_emission_per_km, price_per_km, unsupported_airportid):
+    def __init__(self, name, equipment, co2_emission_per_km, price_per_km, cruise_speed, unsupported_airportid):
         self.name = name
         self.equipment = equipment
         self.co2_emission_per_km = float(co2_emission_per_km)
         self.price_per_km = float(price_per_km)
+        self.cruise_speed = int(cruise_speed)
         self.unsupported_airportid = unsupported_airportid
 
 
@@ -169,6 +170,8 @@ def estimate_cost(distance, cost_per_km):
     return distance * cost_per_km
 
 
+
+
 def estimate_co2(graph, route, default_co2_emission_per_km):
     total_co2 = 0.0
     for i in range(len(route) - 1):
@@ -216,7 +219,7 @@ def potential(graph, start_id, end_id):
 # Dijkstra's algorithm with weighted edge (A* algorithm) to find multiple paths
 # A* formula : f(n) = g(n) + h(n)
 
-def find_multiple_routes(graph, start_id, end_id, exclude_id, cost_per_km, co2_per_km, plane_equipment, num_routes=5):
+def find_multiple_routes(graph, start_id, end_id, exclude_id, cost_per_km, co2_per_km, cruise_speed, plane_equipment, num_routes=5):
     def a_star_with_exclusions(start_id, end_id, excluded_paths):
         try:
 
@@ -323,6 +326,9 @@ def find_multiple_routes(graph, start_id, end_id, exclude_id, cost_per_km, co2_p
 
             # Estimate the total cost for the route
             total_cost = estimate_cost(total_distance, cost_per_km)
+            # Estimate time for route
+            total_time = total_distance / cruise_speed
+
             # Fix estimate total co2 emission
             # Use the entire route path and the graph
             total_co2 = estimate_co2(graph, path, co2_per_km)
@@ -334,6 +340,7 @@ def find_multiple_routes(graph, start_id, end_id, exclude_id, cost_per_km, co2_p
                 'distance': total_distance,
                 'cost': total_cost,
                 'environmental impact': total_co2,
+                'estimated time': total_time,
                 'plane name': plane_name,
                 'plane iata': plane_equipment
             })
@@ -679,8 +686,8 @@ def update_stored_routes(n_clicks, start_iata, end_iata, exclude_iata, plane_equ
             # Find multiple routes
             price = graph.co2_data[plane_equipment].price_per_km
             co2 = graph.co2_data[plane_equipment].co2_emission_per_km
-            routes = find_multiple_routes(
-                graph, start_id, end_id, exclude_id, price, co2, plane_equipment)
+            cruise_speed = graph.co2_data[plane_equipment].cruise_speed
+            routes = find_multiple_routes(graph, start_id, end_id, exclude_id, price, co2, cruise_speed, plane_equipment)
 
             if routes:  # if routes are found, return it
                 return routes, '', search_attempted
@@ -815,17 +822,12 @@ def display_click_data(clickData, routes_data):
             info.append(html.Br())
             info.append(html.Br())
 
-            info.append(html.Div(
-                f"Plane Flown: {route_info['plane name']} ({route_info['plane iata']})"))
-
-            # Add total distance and estimated cost
-            info.append(
-                html.Div(f"Total Distance: {route_info['distance']:.2f} km"))
+            # Add Route information (Plane Type, Distance, Cost, C02 Emissions, Time)
+            info.append(html.Div(f"Plane Flown: {route_info['plane name']} ({route_info['plane iata']})"))
+            info.append(html.Div(f"Total Distance: {route_info['distance']:.2f} KM"))
             info.append(html.Div(f"Estimated Cost: ${route_info['cost']:.2f}"))
-
-            # Add total CO2 emissions
-            info.append(
-                html.Div(f"Total CO2 Emissions: {route_info['environmental impact']:.2f} kg"))
+            info.append(html.Div(f"Estimated Time: {route_info['cruise_speed']:.2f} hours"))
+            info.append(html.Div(f"Total CO2 Emissions: {route_info['environmental impact']:.2f} KG"))
 
             print("info displayed")
             return html.Div(info, style={'white-space': 'pre-line'}), ""
