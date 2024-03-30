@@ -346,7 +346,7 @@ def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane
 # Create the Dash app
 app = Dash(__name__)
 graph = Graph()
-load_data(graph, 'airports.csv', 'routes.csv', 'new_planes_co2_price.csv')
+load_data(graph, 'airports.csv', 'routes.csv', 'planes_co2_price.csv')
 
 # Function to generate the figure with all routes
 
