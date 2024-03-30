@@ -216,7 +216,7 @@ def potential(graph, start_id, end_id):
 # Dijkstra's algorithm with weighted edge (A* algorithm) to find multiple paths
 # A* formula : f(n) = g(n) + h(n)
 
-def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane_equipment, num_routes=5):
+def find_multiple_routes(graph, start_id, end_id, exclude_id, cost_per_km, co2_per_km, plane_equipment, num_routes=5):
     def a_star_with_exclusions(start_id, end_id, excluded_paths):
         try:
 
@@ -300,10 +300,14 @@ def find_multiple_routes(graph, start_id, end_id, cost_per_km, co2_per_km, plane
         unsupported_airportid = graph.co2_data[plane_equipment].unsupported_airportid
         unsupported_airportid = ast.literal_eval(unsupported_airportid)
         for i in unsupported_airportid:
-            temp = [start_id, str(i)]
-            temp2 = [str(i), end_id]
-            excluded_paths.append(temp)
-            excluded_paths.append(temp2)
+            excluded_paths.append([start_id, str(i)])
+            excluded_paths.append([str(i), end_id])
+
+        # Append exluded airports to excluded paths
+        excluded_paths.append([start_id, exclude_id])
+        excluded_paths.append([exclude_id, end_id])
+
+
         # search route based on the number of times
         for _ in range(num_routes):
             path = a_star_with_exclusions(start_id, end_id, excluded_paths)
@@ -460,7 +464,6 @@ app.layout = html.Div([
 
         html.Div(id="autocomplete-output"),
 
-        html.Label('Plane: '),
         dcc.Dropdown(
             id='sort-by-plane',
             options=[],
@@ -481,7 +484,7 @@ app.layout = html.Div([
                    'background-color': "rgb(51,117,229)",
                    "color": "white"}
         ),
-        html.Label('Sort Routes By: '),
+        #html.Label('Sort Routes By: '),
         dcc.Dropdown(
             id='sort-by-dropdown',
             options=[
@@ -494,7 +497,19 @@ app.layout = html.Div([
             # Ensure this is the same width as the input boxes
             style={'width': '12vw', 'padding-left': '20px'}
         ),
+
+        dcc.Dropdown(
+            id='exclude-iata',
+            options=[],
+            placeholder='Exclude airport',
+            style={'marginRight': '10px', 'width': '20vw', 'height': '36px',
+                   },  # Adjust marginRight
+            value='',
+            optionHeight=50
+        ),
+
     ], style={'display': 'flex', 'alignItems': 'center'}),
+
     html.Div(id='error-message', style={'color': 'red'}),
     dcc.Store(id='stored-routes'),  # Store component for the routes
     # Store to track search attempts
@@ -533,6 +548,11 @@ app.layout = html.Div([
     [Output('end-iata', 'options'), Output('end-iata', 'value')],
     [Input('end-iata', 'search_value')],
     [State('end-iata', 'value')]
+)
+@app.callback(
+    [Output('exclude-iata', 'options'), Output('exclude-iata', 'value')],
+    [Input('exclude-iata', 'search_value')],
+    [State('exclude-iata', 'value')]
 )
 def update_autocomplete_suggestions(search_value, value):
     # Initialize the options list as empty
@@ -628,10 +648,10 @@ def binary_search(unsupported_airportid, id):
      Output('error-message', 'children'),
      Output('search-attempted', 'data')],
     [Input('find-routes', 'n_clicks')],
-    [State('start-iata', 'value'), State('end-iata', 'value'),
+    [State('start-iata', 'value'), State('end-iata', 'value'), State('exclude-iata', 'value'),
      State('sort-by-plane', 'value')]
 )
-def update_stored_routes(n_clicks, start_iata, end_iata, plane_equipment):
+def update_stored_routes(n_clicks, start_iata, end_iata, exclude_iata, plane_equipment):
     search_attempted = n_clicks > 0
 
     if search_attempted:
@@ -641,6 +661,8 @@ def update_stored_routes(n_clicks, start_iata, end_iata, plane_equipment):
                              if airport.iata == start_iata), None)
             end_id = next((airport.airportid for airport in graph.airports.values()
                            if airport.iata == end_iata), None)
+            exclude_id = next((airport.airportid for airport in graph.airports.values()
+                           if airport.iata == exclude_iata), None)
 
             # Validation for same starting and ending airports
             if start_id == end_id:
@@ -649,7 +671,7 @@ def update_stored_routes(n_clicks, start_iata, end_iata, plane_equipment):
             # Find multiple routes
             price = graph.co2_data[plane_equipment].price_per_km
             co2 = graph.co2_data[plane_equipment].co2_emission_per_km
-            routes = find_multiple_routes(graph, start_id, end_id, price, co2, plane_equipment)
+            routes = find_multiple_routes(graph, start_id, end_id, exclude_id, price, co2, plane_equipment)
 
             if routes:  # if routes are found, return it
                 return routes, '', search_attempted
