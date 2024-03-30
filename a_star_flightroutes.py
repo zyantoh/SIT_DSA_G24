@@ -745,7 +745,7 @@ def update_map(routes_data, search_attempted):
 
         # Valid routes are present, plot them
         figure = plot_routes(graph, routes_data)
-        instructions = "Click on a route to see detailed information."
+        instructions = "Click on a route on the globe to see detailed information."
         flight_info = ""
         return figure, instructions, flight_info
 
