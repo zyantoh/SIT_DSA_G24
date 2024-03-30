@@ -307,7 +307,6 @@ def find_multiple_routes(graph, start_id, end_id, exclude_id, cost_per_km, co2_p
         excluded_paths.append([start_id, exclude_id])
         excluded_paths.append([exclude_id, end_id])
 
-
         # search route based on the number of times
         for _ in range(num_routes):
             path = a_star_with_exclusions(start_id, end_id, excluded_paths)
@@ -418,7 +417,9 @@ def plot_routes(graph, route_infos):
         countrycolor='rgb(204, 204, 204)',
         projection_rotation=dict(lon=start_lon, lat=start_lat)
     )
-    title_text = f"{len(route_infos)} Flight Route{'s' if len(route_infos) != 1 else ''} Found"
+
+    title_text = (f"{len(route_infos)} Flight Route"
+                  f"{'s' if len(route_infos) != 1 else ''} Found")
 
     fig.update_layout(
         title=title_text,
@@ -441,74 +442,81 @@ def plot_routes(graph, route_infos):
 # Define the layout of the app
 app.layout = html.Div([
     html.Div([
-        dcc.Dropdown(
-            id='start-iata',
-            options=[],
-            search_value='',
-            placeholder='Enter Source Airport',
-            style={'marginRight': '10px', 'width': '20vw', 'height': '36px',
-                   },  # Adjust marginRight
-            value='',
-            optionHeight=50
-        ),
+        html.Div([  # Left-aligned elements
+            dcc.Dropdown(
+                id='start-iata',
+                options=[],
+                search_value='',
+                placeholder='Enter Source Airport',
+                style={'marginRight': '10px',
+                       'width': '20vw', 'height': '36px'},
+                value='',
+                optionHeight=50
+            ),
+            dcc.Dropdown(
+                id='end-iata',
+                options=[],
+                placeholder='Enter destination airport',
+                style={'marginRight': '10px',
+                       'width': '20vw', 'height': '36px'},
+                value='',
+                optionHeight=50
+            ),
+            html.Div(id="autocomplete-output"),
+            dcc.Dropdown(
+                id='sort-by-plane',
+                options=[],
+                value='',
+                placeholder='Choose plane',
+                disabled=True,
+                clearable=True,
+                style={'marginRight': '10px',
+                       'width': '12vw', 'height': '36px'}
+            ),
+            html.Button(
+                'Find Routes',
+                id='find-routes',
+                n_clicks=0,
+                style={
+                    'background-color': '#0275d8',
+                    'color': 'white',
+                    'padding': '10px 20px',
+                    'border': 'none',
+                    'border-radius': '5px',
+                    'cursor': 'pointer',
+                    'margin': '10px 5px 10px 0',
+                },
+            ),
+        ], style={'display': 'flex', 'flex': 1, 'alignItems': 'center'}),
 
-        dcc.Dropdown(
-            id='end-iata',
-            options=[],
-            placeholder='Enter destination airport',
-            style={'marginRight': '10px', 'width': '20vw', 'height': '36px',
-                   },  # Adjust marginRight
-            value='',
-            optionHeight=50
-        ),
+        html.Div([  # Right-aligned elements
+            dcc.Dropdown(
+                id='sort-by-dropdown',
+                options=[
+                    {'label': 'Distance', 'value': 'Distance'},
+                    {'label': 'Cost', 'value': 'Cost'},
+                    {'label': 'Environmental Impact',
+                        'value': 'Environmental Impact'}
+                ],
+                value='',
+                placeholder='Sort routes by',
+                style={'marginRight': '10px',
+                       'width': '12vw', 'height': '36px'}
+            ),
+            dcc.Dropdown(
+                id='exclude-iata',
+                options=[],
+                placeholder='Exclude airport',
+                style={'marginRight': '10px',
+                       'width': '12vw', 'height': '36px'},
+                value='',
+                optionHeight=50
+            ),
+            # This ensures the div is aligned to the right
+        ], style={'display': 'flex', 'justify-content': 'flex-end'}),
+        # This is the parent flexbox
+    ], style={'display': 'flex', 'alignItems': 'center', 'justifyContent': 'space-between'}),
 
-        html.Div(id="autocomplete-output"),
-
-        dcc.Dropdown(
-            id='sort-by-plane',
-            options=[],
-            value='',
-            placeholder='Choose plane',
-            disabled=True,
-            clearable=True,
-            # Ensure this is the same width as the input boxes
-            style={'width': '12vw', 'padding-left': '20px'}
-        ),
-
-        html.Button(
-            'Find Routes',
-            id='find-routes',
-            n_clicks=0,
-            # Adjust marginRight as needed
-            style={'margin-left': '20px', 'marginRight': '20px', 'height': '36px',
-                   'background-color': "rgb(51,117,229)",
-                   "color": "white"}
-        ),
-        #html.Label('Sort Routes By: '),
-        dcc.Dropdown(
-            id='sort-by-dropdown',
-            options=[
-                {'label': 'Distance', 'value': 'Distance'},
-                {'label': 'Cost', 'value': 'Cost'},
-                {'label': 'Environmental Impact', 'value': 'Environmental Impact'}
-            ],
-            value='',
-            placeholder='Sort routes by',
-            # Ensure this is the same width as the input boxes
-            style={'width': '12vw', 'padding-left': '20px'}
-        ),
-
-        dcc.Dropdown(
-            id='exclude-iata',
-            options=[],
-            placeholder='Exclude airport',
-            style={'marginRight': '10px', 'width': '20vw', 'height': '36px',
-                   },  # Adjust marginRight
-            value='',
-            optionHeight=50
-        ),
-
-    ], style={'display': 'flex', 'alignItems': 'center'}),
 
     html.Div(id='error-message', style={'color': 'red'}),
     dcc.Store(id='stored-routes'),  # Store component for the routes
@@ -577,7 +585,7 @@ def update_autocomplete_suggestions(search_value, value):
         if selected_airport:
             # Add the currently selected option to the options list
             options.insert(0, {'label': f"{selected_airport.name} ({selected_airport.iata}) [{selected_airport.city}, {selected_airport.country}]",
-                                'value': selected_airport.iata})
+                               'value': selected_airport.iata})
     return options, value
 
 
@@ -662,16 +670,17 @@ def update_stored_routes(n_clicks, start_iata, end_iata, exclude_iata, plane_equ
             end_id = next((airport.airportid for airport in graph.airports.values()
                            if airport.iata == end_iata), None)
             exclude_id = next((airport.airportid for airport in graph.airports.values()
-                           if airport.iata == exclude_iata), None)
+                               if airport.iata == exclude_iata), None)
 
             # Validation for same starting and ending airports
             if start_id == end_id:
                 return [], 'Starting and ending airports are the same.', search_attempted
-            
+
             # Find multiple routes
             price = graph.co2_data[plane_equipment].price_per_km
             co2 = graph.co2_data[plane_equipment].co2_emission_per_km
-            routes = find_multiple_routes(graph, start_id, end_id, exclude_id, price, co2, plane_equipment)
+            routes = find_multiple_routes(
+                graph, start_id, end_id, exclude_id, price, co2, plane_equipment)
 
             if routes:  # if routes are found, return it
                 return routes, '', search_attempted
@@ -773,13 +782,19 @@ def display_click_data(clickData, routes_data):
                 html.Strong("Route Information:"),
                 html.Br(),
                 html.Strong("Start: "),
-                f"{graph.airports[route_info['route'][0]].name} ({graph.airports[route_info['route'][0]].iata}), {graph.airports[route_info['route'][0]].country}",
+                f"{graph.airports[route_info['route'][0]].name} "
+                f"({graph.airports[route_info['route'][0]].iata}), "
+                f"{graph.airports[route_info['route'][0]].country}",
                 html.Br(), html.Br()
             ]
 
             # Add layovers if there are any
             layovers_info = [
-                f"{i+1}. {graph.airports[airport_id].name} ({graph.airports[airport_id].iata}), {graph.airports[airport_id].country}"
+                (
+                    f"{i+1}. {graph.airports[airport_id].name} "
+                    f"({graph.airports[airport_id].iata}), "
+                    f"{graph.airports[airport_id].country}"
+                )
                 for i, airport_id in enumerate(route_info['route'][1:-1])
             ]
             if layovers_info:
@@ -791,7 +806,11 @@ def display_click_data(clickData, routes_data):
             # Add the end airport information
             info.append(html.Strong("End: "))
             info.append(
-                f"{graph.airports[route_info['route'][-1]].name} ({graph.airports[route_info['route'][-1]].iata}), {graph.airports[route_info['route'][-1]].country}"
+                (
+                    f"{graph.airports[route_info['route'][-1]].name} "
+                    f"({graph.airports[route_info['route'][-1]].iata}), "
+                    f"{graph.airports[route_info['route'][-1]].country}"
+                )
             )
             info.append(html.Br())
             info.append(html.Br())
