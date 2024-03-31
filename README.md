@@ -1,6 +1,6 @@
-#Flight Route Planner#
+#Flight Route Planner
 
-##Introduction##
+##Introduction
 
 This Flight Route Planner is a Python program designed to help users find and visualize multiple flight routes based on various parameters such as distance, cost, and CO2 emissions. It utilizes data on airports, routes, and CO2 emissions from aircraft to provide comprehensive insights into flight planning.
 
