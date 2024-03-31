@@ -1,7 +1,6 @@
 import heapq
 import csv
 import ast
-import time
 import plotly.graph_objs as go
 from dash import Dash, dcc, html, Input, Output, State
 from math import radians, cos, sin, asin, sqrt
@@ -360,7 +359,7 @@ def find_multiple_routes(graph, start_id, end_id, exclude_id, cost_per_km, co2_p
 # Create the Dash app
 app = Dash(__name__)
 graph = Graph()
-load_data(graph, 'airports.csv', 'routes.csv', 'planes_co2_price.csv')
+load_data(graph, 'airports.csv', 'routes.csv', 'planes.csv')
 
 # Function to generate the figure with all routes
 
