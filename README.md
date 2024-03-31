@@ -15,7 +15,7 @@ Before running this program, ensure you have the following prerequisites install
 1. Clone the Repository
 First, clone this repository to your local machine using Git.
 
-        git clone [<repository-url>](https://github.com/zyantoh/SIT_DSA_G24.git)
+        git clone https://github.com/zyantoh/SIT_DSA_G24.git
         cd flight-route-planner
 
 2. Install Dependencies
