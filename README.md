@@ -18,23 +18,7 @@ First, clone this repository to your local machine using Git.
         git clone <repository-url>
         cd flight-route-planner
 
-2. Set Up a Virtual Environment (Optional but recommended)
-It's a good practice to create a virtual environment for your Python projects. This keeps dependencies required by different projects separate by creating isolated environments for them.
-
-* Create a virtual environment:
-
-        python -m venv venv
-
-* Activate the virtual environment:
-  * On Windows:
-
-        .\venv\Scripts\activate
-
-  * On macOS and Linux:
-
-        source venv/bin/activate
-
-3. Install Dependencies
+2. Install Dependencies
 Install all required packages using pip:
 
         pip install -r requirements.txt
