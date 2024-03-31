@@ -15,25 +15,29 @@ Before running this program, ensure you have the following prerequisites install
 1. Clone the Repository
 First, clone this repository to your local machine using Git.
 
-  git clone <repository-url>
-  cd flight-route-planner
+        git clone <repository-url>
+        cd flight-route-planner
 
 2. Set Up a Virtual Environment (Optional but recommended)
 It's a good practice to create a virtual environment for your Python projects. This keeps dependencies required by different projects separate by creating isolated environments for them.
 
 * Create a virtual environment:
-  python -m venv venv
+
+        python -m venv venv
 
 * Activate the virtual environment:
   * On Windows:
-    .\venv\Scripts\activate
+
+        .\venv\Scripts\activate
 
   * On macOS and Linux:
-    source venv/bin/activate
+
+        source venv/bin/activate
 
 3. Install Dependencies
 Install all required packages using pip:
-  pip install -r requirements.txt
+
+        pip install -r requirements.txt
 
 This command reads the requirements.txt file and installs all the Python packages listed there. For this program, you'll need to ensure you have dash, plotly, and other dependencies installed.
 
@@ -44,7 +48,7 @@ Ensure you have the necessary CSV files (airports.csv, routes.csv, planes.csv) i
 1. Start the Application
 With all dependencies installed, you can now run the Dash app:
 
-  python a_star_flightroutes.py
+        python a_star_flightroutes.py
 
 2. Access the Dashboard
 Once the server starts, you'll see a message in the console indicating the URL where the Dash app is running (typically http://127.0.0.1:8050/). Open this URL in a web browser to interact with the Flight Route Planner dashboard.
