@@ -231,66 +231,71 @@ def find_multiple_routes(graph, start_id, end_id, exclude_id, cost_per_km, co2_p
 
             # map of vertices that have been visited before
             previous = {airport_id: None for airport_id in graph.airports}
-
+            
             # set starting distance to 0
             distances[start_id] = 0
 
-            # (current distance, current vertex)
-            pq = [(0, start_id)]
+            # (current weight, current distance, current vertex, previous vertex)
+            pq = [(0, 0, start_id)]
 
             # potential distance between start to end
             original_potential = potential(graph, start_id, end_id)
 
             while pq:
                 # first loop: current_distance = 0, current_vertex = start_id
-                current_distance, current_vertex = heapq.heappop(pq)
+                current_weight, current_distance, current_vertex = heapq.heappop(pq)
+
                 # potential of current vertex (distance from vertex to end)
-                current_vertex_potential = potential(
-                    graph, current_vertex, end_id)
+                '''current_vertex_potential = potential(
+                    graph, current_vertex, end_id)'''
 
                 # destination reached
                 if current_vertex == end_id:
                     break
                 # reach out to all nearby nodes
                 for neighbor in graph.adjacency_list[current_vertex]:
-                    # number_of_adj = len(graph.adjacency_list[current_vertex])
-
-                    # potential weight from neighbour to end
+                    
+                    # h(n)
+                    # heuristic value of neughbour
+                    # distance from neighbour to end
                     neighbour_vertex_potential = potential(
                         graph, neighbor, end_id)
+                    
                     # weight of edge between current vertex and neighbouring vertex
-                    # h(n)
-                    weight_of_edge = original_potential + \
-                        neighbour_vertex_potential - current_vertex_potential
+                    '''weight_of_edge = original_potential + \
+                        neighbour_vertex_potential - current_vertex_potential'''
 
                     if [current_vertex, neighbor] in excluded_paths:
                         continue
-
-                    # distance is the distance of the neighbouring vertex
-                    # (OLD CODE) distance = current_distance + 1
+                    
                     # g(n) = distance from start to current vertex + distance from current vertex to neighbouring vertex
                     # distance from current vertex to neighbour vertex
                     distance = current_distance + \
                         potential(graph, current_vertex, neighbor)
-                    weight_of_vertex = distance + weight_of_edge
+                    
+                    #f(n) = g(n) + h(n)
+                    #weights = (distance of path travelled to neighbour) + (distance from neighbour to destination)
+                    weight_of_vertex = distance + neighbour_vertex_potential
+                    '''weight_of_vertex = distance + weight_of_edge'''
 
                     # updates neighbouring vertex distance if it took a shorter distance
-
-                    if weight_of_vertex < distances[neighbor]:
+                    # checking if the neigbour vertex was the current vertex previous vertex
+                    '''print(previous[neighbor])
+                    print(neighbor)'''
+                    if distance < distances[neighbor]:
+                        print ('not equal')
                         # closest distance from start
-                        distances[neighbor] = weight_of_vertex
+                        distances[neighbor] = distance
                         # previous vertex path taken
                         previous[neighbor] = current_vertex
-                        heapq.heappush(pq, (weight_of_vertex, neighbor))
-                        # f(n) : weight of each vertex
-
-                        # boundary_vertices map stores weight of edge
-
+                        heapq.heappush(pq, (weight_of_vertex, distance, neighbor))
+            
             path, current_vertex = [], end_id
             while current_vertex is not None:
                 path.insert(0, current_vertex)
                 current_vertex = previous[current_vertex]
-
+            print('path')
+            print(path)
             return path if path[0] == start_id else []
         except Exception as error:
             print(f"An error occurred during route finding: {error}")
